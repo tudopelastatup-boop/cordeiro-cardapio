@@ -1,0 +1,76 @@
+import { MenuItem, RestaurantInfo } from './types';
+
+export const RESTAURANT_INFO: RestaurantInfo = {
+  name: "PRIME CUT",
+  slogan: "A Arte da Carne",
+  coverImage: "https://images.unsplash.com/photo-1544025162-d76694265947?q=80&w=1200&auto=format&fit=crop",
+  logo: "https://images.unsplash.com/photo-1559339352-11d035aa65de?q=80&w=400&auto=format&fit=crop",
+  address: "Av. Faria Lima, 4500 - Itaim Bibi, São Paulo",
+  phone: "(11) 99999-9999",
+  whatsapp: "5511999999999",
+  instagram: "primecut_oficial",
+  hours: "Ter - Dom: 19h às 23h"
+};
+
+export const MENU_ITEMS: MenuItem[] = [
+  {
+    id: '1',
+    title: 'Bife de Tira Wagyu',
+    description: 'Corte central do picanha wagyu A5, maturado por 45 dias a seco. Finalizado com flor de sal defumada e essência de alecrim. Uma experiência que derrete na boca.',
+    price: 385,
+    currency: 'R$',
+    category: 'Carnes Nobres',
+    image: 'https://images.unsplash.com/photo-1546964124-0cce460f38ef?q=80&w=1200&auto=format&fit=crop',
+    video: '6S9ivS0hOxw',
+    tags: ['Wagyu', 'Dry Aged', 'Signature'],
+    isSignature: true,
+  },
+  {
+    id: '2',
+    title: 'Tomahawk Gold',
+    description: 'A indulgência suprema. Tomahawk de 1.2kg envolto em folha de ouro 24k comestível, servido com jus de trufas negras. Ideal para compartilhar em momentos especiais.',
+    price: 650,
+    currency: 'R$',
+    category: 'Especiais do Chef',
+    image: 'https://images.unsplash.com/photo-1600891964092-4316c288032e?q=80&w=1200&auto=format&fit=crop',
+    video: 'dM6r5RKmMCI',
+    tags: ['Ouro 24k', 'Para Compartilhar', 'Premium'],
+    isSignature: true,
+  },
+  {
+    id: '3',
+    title: 'Smoked Old Fashioned',
+    description: 'Bourbon small batch, angostura bitters, xarope de maple, defumado na mesa com lascas de nogueira. Um clássico revisitado.',
+    price: 58,
+    currency: 'R$',
+    category: 'Coquetéis',
+    image: 'https://images.unsplash.com/photo-1595981267035-7b04ca84a82d?q=80&w=1200&auto=format&fit=crop',
+    video: '8ka4pXiyWrY',
+    tags: ['Bourbon', 'Defumado', 'Clássico'],
+    isSignature: false,
+  },
+  {
+    id: '4',
+    title: 'Risoto de Trufas',
+    description: 'Arroz arbóreo cozido lentamente com mix de cogumelos selvagens, crisp de parmesão e trufas negras frescas raladas na hora.',
+    price: 120,
+    currency: 'R$',
+    category: 'Pratos Principais',
+    image: 'https://images.unsplash.com/photo-1633966835269-0df8417c4623?q=80&w=1200&auto=format&fit=crop',
+    video: 'EU4DRwDbCvk',
+    tags: ['Vegetariano', 'Trufas', 'Cremoso'],
+    isSignature: false,
+  },
+  {
+    id: '5',
+    title: 'Petit Gâteau',
+    description: 'Fondant de chocolate belga 70% cacau com coração derretido, servido com sorvete de baunilha de Madagascar artesanal.',
+    price: 45,
+    currency: 'R$',
+    category: 'Sobremesas',
+    image: 'https://images.unsplash.com/photo-1624353365286-3f8d62daad51?q=80&w=1200&auto=format&fit=crop',
+    video: '8Yz7wREvhAc',
+    tags: ['Chocolate', 'Doce', 'Quente e Frio'],
+    isSignature: false,
+  }
+];
