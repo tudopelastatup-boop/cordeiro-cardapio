@@ -115,8 +115,8 @@ export const RestaurantProfile: React.FC<RestaurantProfileProps> = ({ business }
         </div>
 
         <div className="mt-8 mb-4 flex items-center gap-2">
-          <p className="text-white/20 text-[10px]">Powered by</p>
-          <img src="/Witrin logo pequena.svg" alt="Witrin" className="h-3 opacity-20" />
+          <p className="text-white/40 text-[10px]">Powered by</p>
+          <img src="/Witrin logo branca.svg" alt="Witrin" className="h-3 opacity-40" />
         </div>
       </div>
     </div>

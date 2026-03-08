@@ -1,4 +1,4 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { MAX_VIDEO_SIZE_MB, MAX_VIDEO_SIZE_BYTES, VIDEO_ACCEPTED_TYPES } from '../../lib/constants';
 
 interface VideoUploaderProps {
@@ -18,6 +18,11 @@ export const VideoUploader: React.FC<VideoUploaderProps> = ({
   const [error, setError] = useState<string | null>(null);
   const [previewUrl, setPreviewUrl] = useState<string | null>(currentVideoUrl || null);
   const inputRef = useRef<HTMLInputElement>(null);
+
+  // Sincroniza quando currentVideoUrl muda (ex: dados carregam no modo edição)
+  useEffect(() => {
+    setPreviewUrl(currentVideoUrl || null);
+  }, [currentVideoUrl]);
 
   const validateFile = (file: File): boolean => {
     setError(null);

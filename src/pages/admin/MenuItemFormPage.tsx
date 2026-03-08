@@ -300,7 +300,7 @@ export const MenuItemFormPage: React.FC = () => {
 
           <div className="bg-neutral-900/50 border border-white/5 rounded-2xl p-6 space-y-4">
             <h2 className="text-lg font-medium text-white">Imagem de capa</h2>
-            <label className="relative h-40 rounded-xl bg-neutral-800 border-2 border-dashed border-neutral-700 flex flex-col items-center justify-center cursor-pointer hover:border-neutral-500 transition-colors overflow-hidden group block">
+            <label className="relative block w-40 aspect-square rounded-xl bg-neutral-800 border-2 border-dashed border-neutral-700 cursor-pointer hover:border-neutral-500 transition-colors overflow-hidden group">
               {imagePreview ? (
                 <>
                   <img src={imagePreview} alt="" className="absolute inset-0 w-full h-full object-cover" />
@@ -309,10 +309,10 @@ export const MenuItemFormPage: React.FC = () => {
                   </div>
                 </>
               ) : (
-                <>
+                <div className="absolute inset-0 flex flex-col items-center justify-center">
                   <span className="material-icons-round text-neutral-600 text-3xl mb-2">add_photo_alternate</span>
-                  <p className="text-xs text-neutral-500">Clique para adicionar</p>
-                </>
+                  <p className="text-xs text-neutral-500 text-center px-2">Clique para adicionar</p>
+                </div>
               )}
               <input type="file" accept="image/*" className="hidden" onChange={handleImageSelect} />
             </label>

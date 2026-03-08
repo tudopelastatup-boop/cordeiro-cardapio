@@ -27,8 +27,6 @@ export const StoreSettingsPage: React.FC = () => {
     whatsapp: business?.whatsapp || '',
     instagram: business?.instagram || '',
     hours: business?.hours || '',
-    primaryColor: business?.primaryColor || '#C21807',
-    accentColor: business?.accentColor || '#D4AF37',
   });
 
   const handleChange = (field: string, value: string) => {
@@ -109,8 +107,6 @@ export const StoreSettingsPage: React.FC = () => {
           whatsapp: form.whatsapp || null,
           instagram: form.instagram || null,
           hours: form.hours || null,
-          primary_color: form.primaryColor,
-          accent_color: form.accentColor,
           logo_url: logoUrl,
           cover_image_url: coverImageUrl,
         })
@@ -281,48 +277,6 @@ export const StoreSettingsPage: React.FC = () => {
                 className="w-full bg-neutral-800/50 border border-white/10 rounded-xl px-4 py-3 text-white text-sm focus:outline-none focus:border-white/30 transition-colors"
                 placeholder="Rua, número - Bairro, Cidade"
               />
-            </div>
-          </div>
-        </div>
-
-        {/* Colors */}
-        <div className="bg-neutral-900/50 border border-white/5 rounded-2xl p-6 space-y-5">
-          <h2 className="text-lg font-medium text-white">Cores da loja</h2>
-          <p className="text-xs text-neutral-500 -mt-3">Essas cores serão aplicadas na página pública da sua loja</p>
-          <div className="grid sm:grid-cols-2 gap-5">
-            <div>
-              <label className="block text-sm text-neutral-400 mb-1.5">Cor primária</label>
-              <div className="flex items-center gap-3">
-                <input
-                  type="color"
-                  value={form.primaryColor}
-                  onChange={(e) => handleChange('primaryColor', e.target.value)}
-                  className="w-10 h-10 rounded-lg border-0 cursor-pointer bg-transparent"
-                />
-                <input
-                  type="text"
-                  value={form.primaryColor}
-                  onChange={(e) => handleChange('primaryColor', e.target.value)}
-                  className="flex-1 bg-neutral-800/50 border border-white/10 rounded-xl px-4 py-3 text-white text-sm font-mono focus:outline-none focus:border-white/30 transition-colors"
-                />
-              </div>
-            </div>
-            <div>
-              <label className="block text-sm text-neutral-400 mb-1.5">Cor de destaque</label>
-              <div className="flex items-center gap-3">
-                <input
-                  type="color"
-                  value={form.accentColor}
-                  onChange={(e) => handleChange('accentColor', e.target.value)}
-                  className="w-10 h-10 rounded-lg border-0 cursor-pointer bg-transparent"
-                />
-                <input
-                  type="text"
-                  value={form.accentColor}
-                  onChange={(e) => handleChange('accentColor', e.target.value)}
-                  className="flex-1 bg-neutral-800/50 border border-white/10 rounded-xl px-4 py-3 text-white text-sm font-mono focus:outline-none focus:border-white/30 transition-colors"
-                />
-              </div>
             </div>
           </div>
         </div>
