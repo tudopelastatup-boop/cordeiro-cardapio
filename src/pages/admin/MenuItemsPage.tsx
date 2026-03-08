@@ -140,75 +140,108 @@ export const MenuItemsPage: React.FC = () => {
               onDragOver={(e) => handleDragOver(e, index)}
               onDragEnd={handleDragEnd}
               className={`
-                flex items-center gap-4 bg-neutral-900/50 border border-white/5 rounded-xl p-4
+                bg-neutral-900/50 border border-white/5 rounded-xl p-3 sm:p-4
                 hover:border-white/10 transition-all cursor-grab active:cursor-grabbing
                 ${draggedIndex === index ? 'opacity-50 scale-[0.98]' : ''}
                 ${!item.isActive ? 'opacity-60' : ''}
               `}
             >
-              <span className="material-icons-round text-neutral-600 text-lg shrink-0">drag_indicator</span>
+              {/* Linha principal */}
+              <div className="flex items-center gap-3">
+                <span className="material-icons-round text-neutral-600 text-lg shrink-0">drag_indicator</span>
 
-              <div className="w-16 h-16 rounded-lg overflow-hidden bg-neutral-800 shrink-0 relative">
-                {item.videoUrl ? (
-                  <video
-                    src={item.videoUrl}
-                    className="w-full h-full object-cover"
-                    muted
-                    playsInline
-                    preload="metadata"
-                  />
-                ) : item.image ? (
-                  <img src={item.image} alt="" className="w-full h-full object-cover" />
-                ) : (
-                  <div className="w-full h-full flex items-center justify-center">
-                    <span className="material-icons-round text-neutral-600">restaurant</span>
-                  </div>
-                )}
-                {item.videoUrl && (
-                  <div className="absolute inset-0 flex items-center justify-center bg-black/20">
-                    <span className="material-icons-round text-white text-lg">play_circle</span>
-                  </div>
-                )}
-              </div>
-
-              <div className="flex-1 min-w-0">
-                <div className="flex items-center gap-2">
-                  <h3 className="text-white text-sm font-medium truncate">{item.title}</h3>
-                  {item.isSignature && (
-                    <span className="material-icons-round text-neutral-400 text-xs">verified</span>
+                <div className="w-14 h-14 sm:w-16 sm:h-16 rounded-lg overflow-hidden bg-neutral-800 shrink-0 relative">
+                  {item.videoUrl ? (
+                    <video
+                      src={item.videoUrl}
+                      className="w-full h-full object-cover"
+                      muted
+                      playsInline
+                      preload="metadata"
+                    />
+                  ) : item.image ? (
+                    <img src={item.image} alt="" className="w-full h-full object-cover" />
+                  ) : (
+                    <div className="w-full h-full flex items-center justify-center">
+                      <span className="material-icons-round text-neutral-600">restaurant</span>
+                    </div>
+                  )}
+                  {item.videoUrl && (
+                    <div className="absolute inset-0 flex items-center justify-center bg-black/20">
+                      <span className="material-icons-round text-white text-lg">play_circle</span>
+                    </div>
                   )}
                 </div>
-                <p className="text-xs text-neutral-500 truncate">{getCategoryName(item.categoryId)}</p>
-                <p className="text-sm text-neutral-300 mt-0.5">
-                  {item.currency} {item.price.toFixed(2)}
-                </p>
+
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-1.5">
+                    <h3 className="text-white text-sm font-medium truncate">{item.title}</h3>
+                    {item.isSignature && (
+                      <span className="material-icons-round text-neutral-400 text-xs shrink-0">verified</span>
+                    )}
+                  </div>
+                  <p className="text-xs text-neutral-500 truncate">{getCategoryName(item.categoryId)}</p>
+                  <p className="text-sm text-neutral-300 mt-0.5">
+                    {item.currency} {item.price.toFixed(2)}
+                  </p>
+                </div>
+
+                {/* Ações desktop */}
+                <div className="hidden sm:flex items-center gap-1 shrink-0">
+                  <button
+                    onClick={() => handleToggleActive(item.id, item.isActive)}
+                    className={`p-2 rounded-lg transition-colors ${
+                      item.isActive ? 'text-green-400 hover:bg-green-500/10' : 'text-neutral-600 hover:bg-white/5'
+                    }`}
+                    title={item.isActive ? 'Desativar' : 'Ativar'}
+                  >
+                    <span className="material-icons-round text-lg">
+                      {item.isActive ? 'visibility' : 'visibility_off'}
+                    </span>
+                  </button>
+                  <Link
+                    to={`/admin/menu/${item.id}`}
+                    className="p-2 rounded-lg text-neutral-400 hover:text-white hover:bg-white/5 transition-colors"
+                    title="Editar"
+                  >
+                    <span className="material-icons-round text-lg">edit</span>
+                  </Link>
+                  <button
+                    onClick={() => handleDelete(item.id)}
+                    className="p-2 rounded-lg text-neutral-400 hover:text-red-400 hover:bg-red-500/10 transition-colors"
+                    title="Excluir"
+                  >
+                    <span className="material-icons-round text-lg">delete</span>
+                  </button>
+                </div>
               </div>
 
-              <div className="flex items-center gap-1 shrink-0">
+              {/* Ações mobile */}
+              <div className="sm:hidden flex items-center justify-end gap-2 mt-2 pt-2 border-t border-white/5">
                 <button
                   onClick={() => handleToggleActive(item.id, item.isActive)}
-                  className={`p-2 rounded-lg transition-colors ${
-                    item.isActive ? 'text-green-400 hover:bg-green-500/10' : 'text-neutral-600 hover:bg-white/5'
+                  className={`flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-medium transition-colors ${
+                    item.isActive ? 'text-green-400 bg-green-500/10' : 'text-neutral-500 bg-white/5'
                   }`}
-                  title={item.isActive ? 'Desativar' : 'Ativar'}
                 >
-                  <span className="material-icons-round text-lg">
+                  <span className="material-icons-round text-sm">
                     {item.isActive ? 'visibility' : 'visibility_off'}
                   </span>
+                  {item.isActive ? 'Ativo' : 'Inativo'}
                 </button>
                 <Link
                   to={`/admin/menu/${item.id}`}
-                  className="p-2 rounded-lg text-neutral-400 hover:text-white hover:bg-white/5 transition-colors"
-                  title="Editar"
+                  className="flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-medium text-neutral-400 bg-white/5 hover:text-white transition-colors"
                 >
-                  <span className="material-icons-round text-lg">edit</span>
+                  <span className="material-icons-round text-sm">edit</span>
+                  Editar
                 </Link>
                 <button
                   onClick={() => handleDelete(item.id)}
-                  className="p-2 rounded-lg text-neutral-400 hover:text-red-400 hover:bg-red-500/10 transition-colors"
-                  title="Excluir"
+                  className="flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-medium text-neutral-400 bg-white/5 hover:text-red-400 hover:bg-red-500/10 transition-colors"
                 >
-                  <span className="material-icons-round text-lg">delete</span>
+                  <span className="material-icons-round text-sm">delete</span>
+                  Excluir
                 </button>
               </div>
             </div>

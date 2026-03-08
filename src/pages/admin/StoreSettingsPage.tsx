@@ -2,6 +2,7 @@ import React, { useState, useRef } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
 import { slugify } from '../../utils/slugify';
 import { supabase } from '../../lib/supabase';
+import { APP_DOMAIN } from '../../lib/constants';
 
 export const StoreSettingsPage: React.FC = () => {
   const { business, updateBusiness } = useAuth();
@@ -202,7 +203,7 @@ export const StoreSettingsPage: React.FC = () => {
             <div>
               <label className="block text-sm text-neutral-400 mb-1.5">Slug (URL)</label>
               <div className="flex items-center gap-1">
-                <span className="text-neutral-500 text-sm shrink-0">witrin.com/</span>
+                <span className="text-neutral-500 text-sm shrink-0">{APP_DOMAIN}/</span>
                 <input
                   type="text"
                   value={form.slug}

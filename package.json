@@ -6,7 +6,8 @@
   "scripts": {
     "dev": "vite",
     "build": "vite build",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "start": "serve dist -l 3000 -s"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.98.0",
@@ -16,6 +17,7 @@
     "react": "^19.2.4",
     "react-dom": "^19.2.4",
     "react-router-dom": "^7.13.1",
+    "serve": "^14.2.6",
     "tailwindcss": "^4.2.1"
   },
   "devDependencies": {

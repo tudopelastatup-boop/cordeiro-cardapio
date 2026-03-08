@@ -31,6 +31,8 @@ export const PLANS: Record<PlanType, PlanInfo> = {
   },
 };
 
+export const APP_DOMAIN = import.meta.env.VITE_APP_DOMAIN as string;
+
 export const MAX_VIDEO_SIZE_MB = 5;
 export const MAX_VIDEO_SIZE_BYTES = MAX_VIDEO_SIZE_MB * 1024 * 1024;
 

@@ -70,7 +70,7 @@ export const PlanPage: React.FC = () => {
       {/* Plans Comparison */}
       <div>
         <h2 className="text-lg font-medium text-white mb-6">Todos os planos</h2>
-        <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
           {allPlans.map((key) => {
             const plan = PLANS[key];
             const isCurrent = key === currentPlan;
@@ -80,7 +80,7 @@ export const PlanPage: React.FC = () => {
             return (
               <div
                 key={key}
-                className={`relative p-6 rounded-2xl border transition-all ${
+                className={`relative p-4 sm:p-6 rounded-2xl border transition-all ${
                   isCurrent
                     ? 'bg-white/5 border-white/20'
                     : isPopular

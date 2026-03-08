@@ -2,7 +2,7 @@ import React from 'react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
 import { PlanBadge } from '../../components/admin/PlanBadge';
-import { PLANS } from '../../lib/constants';
+import { PLANS, APP_DOMAIN } from '../../lib/constants';
 import { useMenuData } from '../../hooks/useMenuData';
 
 export const DashboardPage: React.FC = () => {
@@ -52,7 +52,7 @@ export const DashboardPage: React.FC = () => {
             <span className="material-icons-round text-neutral-300 text-2xl">link</span>
           </div>
           <p className="text-sm text-white font-mono mb-1 truncate">
-            witrin.com/{business?.slug || '...'}
+            {APP_DOMAIN}/{business?.slug || '...'}
           </p>
           <p className="text-sm text-neutral-400">Link da sua loja</p>
           <a
