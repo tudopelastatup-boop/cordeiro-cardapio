@@ -1,6 +1,5 @@
 import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { MenuItem } from '../../types';
-import { createPortal } from 'react-dom';
 
 type VideoOrientation = 'vertical' | 'horizontal' | 'square';
 
@@ -13,13 +12,11 @@ interface FeedItemProps {
 export const FeedItem: React.FC<FeedItemProps> = ({ item, isActive, categoryName }) => {
   const [isExpanded, setIsExpanded] = useState(false);
   const [orientation, setOrientation] = useState<VideoOrientation>('vertical');
-  const [isFullscreen, setIsFullscreen] = useState(false);
   const videoRef = useRef<HTMLVideoElement>(null);
 
   const formattedPrice = `${item.currency} ${item.price.toFixed(2)}`;
   const hasVariants = item.variants && item.variants.length > 0;
 
-  // Detect video orientation on metadata load
   const handleLoadedMetadata = useCallback(() => {
     const video = videoRef.current;
     if (!video) return;
@@ -37,59 +34,34 @@ export const FeedItem: React.FC<FeedItemProps> = ({ item, isActive, categoryName
   useEffect(() => {
     const video = videoRef.current;
     if (!video) return;
-
-    if (isActive && !isFullscreen) {
-      // Small delay to let the video element settle after scroll
-      const timer = setTimeout(() => {
-        video.play().catch(() => {});
-      }, 100);
-      return () => clearTimeout(timer);
-    } else if (!isFullscreen) {
+    if (isActive) {
+      video.play().catch(() => {});
+    } else {
       video.pause();
     }
-  }, [isActive, isFullscreen]);
-
-  // Also try to play when the video data is ready (handles slow loading)
-  const handleCanPlay = useCallback(() => {
-    if (isActive && !isFullscreen && videoRef.current) {
-      videoRef.current.play().catch(() => {});
-    }
-  }, [isActive, isFullscreen]);
-
-  const handleEnterFullscreen = useCallback(() => {
-    // Pause the inline video
-    videoRef.current?.pause();
-    setIsFullscreen(true);
-  }, []);
-
-  const handleExitFullscreen = useCallback(() => {
-    setIsFullscreen(false);
-    // Resume inline video
-    setTimeout(() => {
-      if (isActive && videoRef.current) {
-        videoRef.current.play().catch(() => {});
-      }
-    }, 100);
   }, [isActive]);
 
-  // Fullscreen overlay rendered via portal so it escapes any container constraints
-  const fullscreenOverlay = isFullscreen && item.videoUrl && orientation === 'horizontal'
-    ? createPortal(
-        <FullscreenOverlay
-          videoUrl={item.videoUrl}
-          item={item}
-          formattedPrice={formattedPrice}
-          hasVariants={hasVariants}
-          onClose={handleExitFullscreen}
-        />,
-        document.body,
-      )
-    : null;
+  // Also play when video data becomes ready
+  const handleCanPlay = useCallback(() => {
+    if (isActive && videoRef.current) {
+      videoRef.current.play().catch(() => {});
+    }
+  }, [isActive]);
+
+  // Fullscreen: just request fullscreen on the video element itself
+  const handleFullscreen = useCallback(() => {
+    const video = videoRef.current;
+    if (!video) return;
+    if (video.requestFullscreen) {
+      video.requestFullscreen().catch(() => {});
+    } else if ((video as any).webkitEnterFullscreen) {
+      // iOS Safari
+      (video as any).webkitEnterFullscreen();
+    }
+  }, []);
 
   return (
     <section className="relative w-full h-full snap-center flex items-center justify-center bg-black overflow-hidden shrink-0">
-      {fullscreenOverlay}
-
       {/* Video/Image background */}
       <div className="absolute inset-0 z-0 select-none">
         {item.videoUrl ? (
@@ -162,13 +134,13 @@ export const FeedItem: React.FC<FeedItemProps> = ({ item, isActive, categoryName
         <div className="absolute inset-0 bg-linear-to-t from-black via-black/40 to-black/30 z-20" />
       </div>
 
-      {/* Rotate button for horizontal videos */}
+      {/* Fullscreen button for horizontal videos */}
       {item.videoUrl && orientation === 'horizontal' && (
         <button
-          onClick={handleEnterFullscreen}
+          onClick={handleFullscreen}
           className="absolute top-20 right-4 z-30 flex items-center gap-2 px-3 py-2 bg-white/10 backdrop-blur-md border border-white/20 rounded-full text-white text-xs font-medium active:scale-95 transition-transform"
         >
-          <span className="material-icons-round text-base">screen_rotation</span>
+          <span className="material-icons-round text-base">fullscreen</span>
           Tela cheia
         </button>
       )}
@@ -223,90 +195,5 @@ export const FeedItem: React.FC<FeedItemProps> = ({ item, isActive, categoryName
         </div>
       </div>
     </section>
-  );
-};
-
-// Separate fullscreen component — rendered via portal in document.body
-const FullscreenOverlay: React.FC<{
-  videoUrl: string;
-  item: MenuItem;
-  formattedPrice: string;
-  hasVariants: boolean;
-  onClose: () => void;
-}> = ({ videoUrl, item, formattedPrice, hasVariants, onClose }) => {
-  const containerRef = useRef<HTMLDivElement>(null);
-  const videoRef = useRef<HTMLVideoElement>(null);
-
-  useEffect(() => {
-    // Try native fullscreen API
-    const el = containerRef.current;
-    if (el?.requestFullscreen) {
-      el.requestFullscreen().catch(() => {});
-    }
-
-    // Play video
-    videoRef.current?.play().catch(() => {});
-
-    const handleFsChange = () => {
-      if (!document.fullscreenElement) {
-        onClose();
-      }
-    };
-    document.addEventListener('fullscreenchange', handleFsChange);
-
-    // Prevent scroll on body
-    document.body.style.overflow = 'hidden';
-
-    return () => {
-      document.removeEventListener('fullscreenchange', handleFsChange);
-      document.body.style.overflow = '';
-    };
-  }, [onClose]);
-
-  const handleClose = async () => {
-    if (document.fullscreenElement) {
-      try { await document.exitFullscreen(); } catch { /* ignore */ }
-    }
-    onClose();
-  };
-
-  return (
-    <div
-      ref={containerRef}
-      className="fixed inset-0 z-9999 bg-black flex items-center justify-center"
-      style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0 }}
-    >
-      <video
-        ref={videoRef}
-        src={videoUrl}
-        autoPlay
-        muted
-        loop
-        playsInline
-        className="w-full h-full object-contain"
-      />
-      {/* Close button */}
-      <button
-        onClick={handleClose}
-        className="absolute top-4 right-4 w-10 h-10 bg-black/60 backdrop-blur-sm rounded-full flex items-center justify-center text-white active:scale-90 transition-transform"
-      >
-        <span className="material-icons-round">close</span>
-      </button>
-      {/* Item info at bottom */}
-      <div className="absolute bottom-0 left-0 right-0 p-6 bg-linear-to-t from-black/80 to-transparent">
-        <h2 className="text-xl font-serif font-bold text-white mb-1">{item.title}</h2>
-        <div className="text-lg text-white font-serif">
-          {hasVariants ? (
-            <div className="flex gap-3">
-              {item.variants!.map(v => (
-                <span key={v.id} className="text-sm">
-                  {v.name}: {item.currency} {v.price.toFixed(2)}
-                </span>
-              ))}
-            </div>
-          ) : formattedPrice}
-        </div>
-      </div>
-    </div>
   );
 };
