@@ -7,7 +7,8 @@ import { PlanBadge } from './PlanBadge';
 const NAV_ITEMS = [
   { to: '/admin', icon: 'dashboard', label: 'Dashboard', end: true },
   { to: '/admin/settings', icon: 'settings', label: 'Configurações', end: false },
-  { to: '/admin/menu', icon: 'restaurant_menu', label: 'Cardápio', end: false },
+  { to: '/admin/menu', icon: 'restaurant_menu', label: 'Vitrine', end: false },
+  { to: '/admin/qrcode', icon: 'qr_code', label: 'QR Code', end: false },
   { to: '/admin/plan', icon: 'workspace_premium', label: 'Plano', end: false },
 ];
 
@@ -41,7 +42,7 @@ export const AdminLayout: React.FC = () => {
             </div>
           )}
           <div className="flex-1 min-w-0">
-            <p className="text-white text-sm font-medium truncate">{business?.name || 'Minha Loja'}</p>
+            <p className="text-white text-sm font-medium truncate">{business?.name || 'Minha Vitrine'}</p>
             <PlanBadge plan={business?.plan || 'free'} />
           </div>
         </div>
@@ -79,7 +80,7 @@ export const AdminLayout: React.FC = () => {
             className="flex items-center gap-3 px-4 py-3 rounded-xl text-sm text-neutral-500 hover:text-neutral-200 hover:bg-white/5 transition-all"
           >
             <span className="material-icons-round text-xl">open_in_new</span>
-            Ver minha loja
+            Ver minha vitrine
           </a>
         )}
         <button

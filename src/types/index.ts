@@ -1,3 +1,11 @@
+export interface ItemVariant {
+  id: string;
+  menuItemId: string;
+  name: string;
+  price: number;
+  sortOrder: number;
+}
+
 export interface MenuItem {
   id: string;
   title: string;
@@ -11,6 +19,7 @@ export interface MenuItem {
   isSignature?: boolean;
   isActive: boolean;
   sortOrder: number;
+  variants?: ItemVariant[];
 }
 
 export interface Category {
@@ -33,6 +42,7 @@ export interface Business {
   whatsapp?: string;
   instagram?: string;
   hours?: string;
+  menuUrl?: string;
   plan: PlanType;
   planExpiresAt?: string;
   primaryColor: string;

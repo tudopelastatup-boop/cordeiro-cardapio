@@ -33,14 +33,14 @@ export const LandingPage: React.FC = () => {
         <div className="max-w-4xl mx-auto text-center">
           <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-brand-primary/10 border border-brand-primary/20 text-brand-primary text-xs font-medium mb-8">
             <span className="material-icons-round text-sm">play_circle</span>
-            Cardápio audiovisual
+            Vitrine audiovisual
           </div>
           <h1 className="text-4xl md:text-6xl font-serif font-bold leading-tight mb-6">
-            Transforme seu cardápio em uma{' '}
+            Transforme sua vitrine em uma{' '}
             <span className="text-brand-primary">experiência visual</span>
           </h1>
           <p className="text-lg md:text-xl text-neutral-400 max-w-2xl mx-auto mb-10 leading-relaxed">
-            Crie um cardápio interativo com vídeos que despertam o desejo dos seus clientes.
+            Crie uma vitrine audiovisual com vídeos que despertam o desejo dos seus clientes.
             Para restaurantes, bares, cafeterias e qualquer negócio.
           </p>
           <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
@@ -49,7 +49,7 @@ export const LandingPage: React.FC = () => {
               className="w-full sm:w-auto bg-brand-primary hover:bg-brand-primary/90 text-white px-8 py-4 rounded-2xl font-medium text-lg transition-colors flex items-center justify-center gap-2"
             >
               <span className="material-icons-round">rocket_launch</span>
-              Criar meu cardápio
+              Criar minha vitrine
             </Link>
             <Link
               to="/primecut"

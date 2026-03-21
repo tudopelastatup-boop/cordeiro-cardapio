@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useState, useEffect, useRef, useCallback } from 'react';
-import { User, Business } from '../types';
+import { User, Business, PlanType } from '../types';
 import { supabase } from '../lib/supabase';
 
 interface AuthState {
@@ -13,6 +13,7 @@ interface AuthContextType extends AuthState {
   signup: (name: string, email: string, password: string, businessName: string) => Promise<void>;
   logout: () => Promise<void>;
   updateBusiness: (data: Partial<Business>) => void;
+  changePlan: (plan: PlanType) => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | null>(null);
@@ -40,6 +41,7 @@ async function fetchBusiness(userId: string): Promise<Business | null> {
       whatsapp: data.whatsapp ?? undefined,
       instagram: data.instagram ?? undefined,
       hours: data.hours ?? undefined,
+      menuUrl: data.menu_url ?? undefined,
       plan: data.plan,
       planExpiresAt: data.plan_expires_at ?? undefined,
       primaryColor: data.primary_color,
@@ -159,8 +161,22 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }));
   }, []);
 
+  const changePlan = useCallback(async (plan: PlanType) => {
+    const bizId = state.business?.id;
+    if (!bizId) throw new Error('Nenhum negócio encontrado');
+    const { error } = await supabase
+      .from('businesses')
+      .update({ plan })
+      .eq('id', bizId);
+    if (error) throw error;
+    setState(s => ({
+      ...s,
+      business: s.business ? { ...s.business, plan } : null,
+    }));
+  }, [state.business?.id]);
+
   return (
-    <AuthContext.Provider value={{ ...state, login, signup, logout, updateBusiness }}>
+    <AuthContext.Provider value={{ ...state, login, signup, logout, updateBusiness, changePlan }}>
       {children}
     </AuthContext.Provider>
   );

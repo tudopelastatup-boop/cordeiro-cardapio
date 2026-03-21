@@ -1,5 +1,8 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { MenuItem } from '../../types';
+import { createPortal } from 'react-dom';
+
+type VideoOrientation = 'vertical' | 'horizontal' | 'square';
 
 interface FeedItemProps {
   item: MenuItem;
@@ -9,33 +12,146 @@ interface FeedItemProps {
 
 export const FeedItem: React.FC<FeedItemProps> = ({ item, isActive, categoryName }) => {
   const [isExpanded, setIsExpanded] = useState(false);
+  const [orientation, setOrientation] = useState<VideoOrientation>('vertical');
+  const [isFullscreen, setIsFullscreen] = useState(false);
   const videoRef = useRef<HTMLVideoElement>(null);
 
   const formattedPrice = `${item.currency} ${item.price.toFixed(2)}`;
+  const hasVariants = item.variants && item.variants.length > 0;
 
-  useEffect(() => {
-    if (!videoRef.current) return;
-    if (isActive) {
-      videoRef.current.play().catch(() => {});
+  // Detect video orientation on metadata load
+  const handleLoadedMetadata = useCallback(() => {
+    const video = videoRef.current;
+    if (!video) return;
+    const { videoWidth, videoHeight } = video;
+    if (videoWidth > videoHeight * 1.2) {
+      setOrientation('horizontal');
+    } else if (Math.abs(videoWidth - videoHeight) / Math.max(videoWidth, videoHeight) < 0.2) {
+      setOrientation('square');
     } else {
-      videoRef.current.pause();
+      setOrientation('vertical');
     }
+  }, []);
+
+  // Play/pause based on isActive
+  useEffect(() => {
+    const video = videoRef.current;
+    if (!video) return;
+
+    if (isActive && !isFullscreen) {
+      // Small delay to let the video element settle after scroll
+      const timer = setTimeout(() => {
+        video.play().catch(() => {});
+      }, 100);
+      return () => clearTimeout(timer);
+    } else if (!isFullscreen) {
+      video.pause();
+    }
+  }, [isActive, isFullscreen]);
+
+  // Also try to play when the video data is ready (handles slow loading)
+  const handleCanPlay = useCallback(() => {
+    if (isActive && !isFullscreen && videoRef.current) {
+      videoRef.current.play().catch(() => {});
+    }
+  }, [isActive, isFullscreen]);
+
+  const handleEnterFullscreen = useCallback(() => {
+    // Pause the inline video
+    videoRef.current?.pause();
+    setIsFullscreen(true);
+  }, []);
+
+  const handleExitFullscreen = useCallback(() => {
+    setIsFullscreen(false);
+    // Resume inline video
+    setTimeout(() => {
+      if (isActive && videoRef.current) {
+        videoRef.current.play().catch(() => {});
+      }
+    }, 100);
   }, [isActive]);
+
+  // Fullscreen overlay rendered via portal so it escapes any container constraints
+  const fullscreenOverlay = isFullscreen && item.videoUrl && orientation === 'horizontal'
+    ? createPortal(
+        <FullscreenOverlay
+          videoUrl={item.videoUrl}
+          item={item}
+          formattedPrice={formattedPrice}
+          hasVariants={hasVariants}
+          onClose={handleExitFullscreen}
+        />,
+        document.body,
+      )
+    : null;
 
   return (
     <section className="relative w-full h-full snap-center flex items-center justify-center bg-black overflow-hidden shrink-0">
+      {fullscreenOverlay}
+
       {/* Video/Image background */}
       <div className="absolute inset-0 z-0 select-none">
         {item.videoUrl ? (
-          <video
-            ref={videoRef}
-            src={item.videoUrl}
-            autoPlay
-            muted
-            loop
-            playsInline
-            className="w-full h-full object-cover"
-          />
+          <>
+            {orientation === 'horizontal' ? (
+              <div className="w-full h-full flex flex-col items-center justify-center bg-black">
+                <video
+                  src={item.videoUrl}
+                  muted
+                  loop
+                  playsInline
+                  autoPlay
+                  className="absolute inset-0 w-full h-full object-cover blur-2xl opacity-30 scale-110"
+                />
+                <video
+                  ref={videoRef}
+                  src={item.videoUrl}
+                  autoPlay
+                  muted
+                  loop
+                  playsInline
+                  onLoadedMetadata={handleLoadedMetadata}
+                  onCanPlay={handleCanPlay}
+                  className="relative w-full max-h-[50vh] object-contain z-10"
+                />
+              </div>
+            ) : orientation === 'square' ? (
+              <div className="w-full h-full flex items-center justify-center bg-black">
+                <video
+                  src={item.videoUrl}
+                  muted
+                  loop
+                  playsInline
+                  autoPlay
+                  className="absolute inset-0 w-full h-full object-cover blur-2xl opacity-30 scale-110"
+                />
+                <video
+                  ref={videoRef}
+                  src={item.videoUrl}
+                  autoPlay
+                  muted
+                  loop
+                  playsInline
+                  onLoadedMetadata={handleLoadedMetadata}
+                  onCanPlay={handleCanPlay}
+                  className="relative w-full max-h-[70vh] object-contain z-10"
+                />
+              </div>
+            ) : (
+              <video
+                ref={videoRef}
+                src={item.videoUrl}
+                autoPlay
+                muted
+                loop
+                playsInline
+                onLoadedMetadata={handleLoadedMetadata}
+                onCanPlay={handleCanPlay}
+                className="w-full h-full object-cover"
+              />
+            )}
+          </>
         ) : (
           <img
             src={item.image}
@@ -43,11 +159,22 @@ export const FeedItem: React.FC<FeedItemProps> = ({ item, isActive, categoryName
             className={`w-full h-full object-cover transition-transform duration-[10s] ease-linear ${isActive ? 'scale-110' : 'scale-100'}`}
           />
         )}
-        <div className="absolute inset-0 bg-linear-to-t from-black via-black/40 to-black/30" />
+        <div className="absolute inset-0 bg-linear-to-t from-black via-black/40 to-black/30 z-20" />
       </div>
 
+      {/* Rotate button for horizontal videos */}
+      {item.videoUrl && orientation === 'horizontal' && (
+        <button
+          onClick={handleEnterFullscreen}
+          className="absolute top-20 right-4 z-30 flex items-center gap-2 px-3 py-2 bg-white/10 backdrop-blur-md border border-white/20 rounded-full text-white text-xs font-medium active:scale-95 transition-transform"
+        >
+          <span className="material-icons-round text-base">screen_rotation</span>
+          Tela cheia
+        </button>
+      )}
+
       {/* Content */}
-      <div className="absolute bottom-0 left-0 right-0 top-0 z-10 flex flex-col justify-end pb-32 md:pb-24 px-6">
+      <div className="absolute bottom-0 left-0 right-0 top-0 z-30 flex flex-col justify-end pb-32 md:pb-24 px-6">
         <div className="flex justify-start mb-3 animate-fade-in-up" style={{ animationDelay: '0.1s' }}>
           <span className="px-3 py-1 bg-white/10 backdrop-blur-md border border-white/20 text-white/90 text-[11px] font-semibold uppercase tracking-widest rounded-full">
             {categoryName || item.categoryId}
@@ -62,20 +189,124 @@ export const FeedItem: React.FC<FeedItemProps> = ({ item, isActive, categoryName
           <p className={`text-white/80 text-sm font-sans font-light leading-relaxed transition-all duration-300 ${isExpanded ? '' : 'line-clamp-2'}`}>
             {item.description}
           </p>
-          <button
-            onClick={() => setIsExpanded(!isExpanded)}
-            className="text-brand-accent text-xs font-semibold mt-1 uppercase tracking-wider hover:text-white transition-colors"
-          >
-            {isExpanded ? 'Ler menos' : 'Ler mais'}
-          </button>
+          {item.description && (
+            <button
+              onClick={() => setIsExpanded(!isExpanded)}
+              className="text-brand-accent text-xs font-semibold mt-1 uppercase tracking-wider hover:text-white transition-colors"
+            >
+              {isExpanded ? 'Ler menos' : 'Ler mais'}
+            </button>
+          )}
         </div>
 
-        <div className="flex items-center gap-4 animate-fade-in-up" style={{ animationDelay: '0.4s' }}>
-          <div className="text-2xl font-medium text-white font-serif tracking-wide border-l-2 border-brand-primary pl-3">
-            {formattedPrice}
-          </div>
+        <div className="animate-fade-in-up" style={{ animationDelay: '0.4s' }}>
+          {hasVariants ? (
+            <div className="flex flex-wrap gap-2">
+              <div className="px-3 py-1.5 bg-white/10 backdrop-blur-sm rounded-lg border border-white/10">
+                <span className="text-[10px] text-white/60 uppercase tracking-wider block">Base</span>
+                <span className="text-lg font-medium text-white font-serif">{formattedPrice}</span>
+              </div>
+              {item.variants!.map(v => (
+                <div key={v.id} className="px-3 py-1.5 bg-white/10 backdrop-blur-sm rounded-lg border border-white/10">
+                  <span className="text-[10px] text-white/60 uppercase tracking-wider block">{v.name}</span>
+                  <span className="text-lg font-medium text-white font-serif">{item.currency} {v.price.toFixed(2)}</span>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <div className="flex items-center gap-4">
+              <div className="text-2xl font-medium text-white font-serif tracking-wide border-l-2 border-brand-primary pl-3">
+                {formattedPrice}
+              </div>
+            </div>
+          )}
         </div>
       </div>
     </section>
+  );
+};
+
+// Separate fullscreen component — rendered via portal in document.body
+const FullscreenOverlay: React.FC<{
+  videoUrl: string;
+  item: MenuItem;
+  formattedPrice: string;
+  hasVariants: boolean;
+  onClose: () => void;
+}> = ({ videoUrl, item, formattedPrice, hasVariants, onClose }) => {
+  const containerRef = useRef<HTMLDivElement>(null);
+  const videoRef = useRef<HTMLVideoElement>(null);
+
+  useEffect(() => {
+    // Try native fullscreen API
+    const el = containerRef.current;
+    if (el?.requestFullscreen) {
+      el.requestFullscreen().catch(() => {});
+    }
+
+    // Play video
+    videoRef.current?.play().catch(() => {});
+
+    const handleFsChange = () => {
+      if (!document.fullscreenElement) {
+        onClose();
+      }
+    };
+    document.addEventListener('fullscreenchange', handleFsChange);
+
+    // Prevent scroll on body
+    document.body.style.overflow = 'hidden';
+
+    return () => {
+      document.removeEventListener('fullscreenchange', handleFsChange);
+      document.body.style.overflow = '';
+    };
+  }, [onClose]);
+
+  const handleClose = async () => {
+    if (document.fullscreenElement) {
+      try { await document.exitFullscreen(); } catch { /* ignore */ }
+    }
+    onClose();
+  };
+
+  return (
+    <div
+      ref={containerRef}
+      className="fixed inset-0 z-9999 bg-black flex items-center justify-center"
+      style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0 }}
+    >
+      <video
+        ref={videoRef}
+        src={videoUrl}
+        autoPlay
+        muted
+        loop
+        playsInline
+        className="w-full h-full object-contain"
+      />
+      {/* Close button */}
+      <button
+        onClick={handleClose}
+        className="absolute top-4 right-4 w-10 h-10 bg-black/60 backdrop-blur-sm rounded-full flex items-center justify-center text-white active:scale-90 transition-transform"
+      >
+        <span className="material-icons-round">close</span>
+      </button>
+      {/* Item info at bottom */}
+      <div className="absolute bottom-0 left-0 right-0 p-6 bg-linear-to-t from-black/80 to-transparent">
+        <h2 className="text-xl font-serif font-bold text-white mb-1">{item.title}</h2>
+        <div className="text-lg text-white font-serif">
+          {hasVariants ? (
+            <div className="flex gap-3">
+              {item.variants!.map(v => (
+                <span key={v.id} className="text-sm">
+                  {v.name}: {item.currency} {v.price.toFixed(2)}
+                </span>
+              ))}
+            </div>
+          ) : formattedPrice}
+        </div>
+      </div>
+    </div>
   );
 };

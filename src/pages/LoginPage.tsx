@@ -46,7 +46,7 @@ export const LoginPage: React.FC = () => {
         {/* Card */}
         <div className="bg-neutral-900/50 border border-white/5 rounded-2xl p-8">
           <h1 className="text-2xl font-serif text-white text-center mb-2">Bem-vindo de volta</h1>
-          <p className="text-sm text-neutral-400 text-center mb-8">Entre na sua conta para gerenciar seu cardápio</p>
+          <p className="text-sm text-neutral-400 text-center mb-8">Entre na sua conta para gerenciar sua vitrine</p>
 
           <form onSubmit={handleSubmit} className="space-y-5">
             <div>

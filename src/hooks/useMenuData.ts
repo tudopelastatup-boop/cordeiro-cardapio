@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
-import { MenuItem, Category } from '../types';
+import { MenuItem, Category, ItemVariant } from '../types';
 import { supabase } from '../lib/supabase';
 
 interface UseMenuDataResult {
@@ -64,9 +64,19 @@ export function useMenuData(businessId: string | undefined): UseMenuDataResult {
         .select('*')
         .eq('business_id', businessId)
         .order('sort_order', { ascending: true }),
-    ]).then(([itemsRes, catsRes]) => {
+      supabase
+        .from('item_variants')
+        .select('*')
+        .order('sort_order', { ascending: true }),
+    ]).then(([itemsRes, catsRes, variantsRes]) => {
       if (cancelled) return;
-      setItems((itemsRes.data ?? []).map(mapItem));
+      const variantsByItem: Record<string, ItemVariant[]> = {};
+      for (const v of (variantsRes.data ?? [])) {
+        const arr = variantsByItem[v.menu_item_id] || [];
+        arr.push({ id: v.id, menuItemId: v.menu_item_id, name: v.name, price: Number(v.price), sortOrder: Number(v.sort_order) });
+        variantsByItem[v.menu_item_id] = arr;
+      }
+      setItems((itemsRes.data ?? []).map(r => ({ ...mapItem(r), variants: variantsByItem[r.id as string] || [] })));
       setCategories((catsRes.data ?? []).map(mapCategory));
       setIsLoading(false);
     });

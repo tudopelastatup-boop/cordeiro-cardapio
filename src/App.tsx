@@ -12,6 +12,7 @@ import { StoreSettingsPage } from './pages/admin/StoreSettingsPage';
 import { MenuItemsPage } from './pages/admin/MenuItemsPage';
 import { MenuItemFormPage } from './pages/admin/MenuItemFormPage';
 import { PlanPage } from './pages/admin/PlanPage';
+import { QRCodePage } from './pages/admin/QRCodePage';
 
 const App: React.FC = () => {
   return (
@@ -31,6 +32,7 @@ const App: React.FC = () => {
               <Route path="/admin/menu" element={<MenuItemsPage />} />
               <Route path="/admin/menu/:id" element={<MenuItemFormPage />} />
               <Route path="/admin/plan" element={<PlanPage />} />
+              <Route path="/admin/qrcode" element={<QRCodePage />} />
             </Route>
           </Route>
 

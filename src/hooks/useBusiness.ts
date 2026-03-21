@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Business, MenuItem, Category } from '../types';
+import { Business, MenuItem, Category, ItemVariant } from '../types';
 import { supabase } from '../lib/supabase';
 
 interface UseBusinessResult {
@@ -53,16 +53,18 @@ export function useBusiness(slug: string | undefined): UseBusinessResult {
         whatsapp: biz.whatsapp ?? undefined,
         instagram: biz.instagram ?? undefined,
         hours: biz.hours ?? undefined,
+        menuUrl: biz.menu_url ?? undefined,
         plan: biz.plan,
         planExpiresAt: biz.plan_expires_at ?? undefined,
         primaryColor: biz.primary_color,
         accentColor: biz.accent_color,
       };
 
-      // Busca categorias e itens em paralelo
-      const [catsRes, itemsRes] = await Promise.all([
+      // Busca categorias, itens e variantes em paralelo
+      const [catsRes, itemsRes, variantsRes] = await Promise.all([
         supabase.from('categories').select('*').eq('business_id', biz.id).order('sort_order'),
         supabase.from('menu_items').select('*').eq('business_id', biz.id).eq('is_active', true).order('sort_order'),
+        supabase.from('item_variants').select('*').order('sort_order'),
       ]);
 
       if (cancelled) return;
@@ -73,6 +75,14 @@ export function useBusiness(slug: string | undefined): UseBusinessResult {
         name: r.name,
         sortOrder: r.sort_order,
       }));
+
+      // Map variants by menu_item_id
+      const variantsByItem: Record<string, ItemVariant[]> = {};
+      for (const v of (variantsRes.data ?? [])) {
+        const arr = variantsByItem[v.menu_item_id] || [];
+        arr.push({ id: v.id, menuItemId: v.menu_item_id, name: v.name, price: Number(v.price), sortOrder: Number(v.sort_order) });
+        variantsByItem[v.menu_item_id] = arr;
+      }
 
       const menuItems: MenuItem[] = (itemsRes.data ?? []).map(r => ({
         id: r.id,
@@ -87,6 +97,7 @@ export function useBusiness(slug: string | undefined): UseBusinessResult {
         isSignature: Boolean(r.is_signature),
         isActive: Boolean(r.is_active),
         sortOrder: Number(r.sort_order),
+        variants: variantsByItem[r.id] || [],
       }));
 
       setState({ business, menuItems, categories, isLoading: false, error: null });

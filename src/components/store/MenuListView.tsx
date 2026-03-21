@@ -1,34 +1,112 @@
-import React from 'react';
-import { MenuItem, Category } from '../../types';
+import React, { useState, useRef, useEffect } from 'react';
+import { MenuItem, Category, Business } from '../../types';
 
 interface MenuListViewProps {
   items: MenuItem[];
   categories: Category[];
+  business: Business;
   onItemClick: (index: number) => void;
 }
 
-export const MenuListView: React.FC<MenuListViewProps> = ({ items, categories, onItemClick }) => {
+export const MenuListView: React.FC<MenuListViewProps> = ({ items, categories, business, onItemClick }) => {
+  const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
+  const videoRefs = useRef<Map<string, HTMLVideoElement>>(new Map());
+
   const getCategoryName = (categoryId: string) => {
     return categories.find(c => c.id === categoryId)?.name || '';
+  };
+
+  // Categories that actually have items
+  const activeCategories = categories.filter(cat =>
+    items.some(item => item.categoryId === cat.id)
+  );
+
+  const filteredItems = selectedCategory
+    ? items.filter(item => item.categoryId === selectedCategory)
+    : items;
+
+  // Play all videos on mount and when filter changes
+  useEffect(() => {
+    videoRefs.current.forEach((video) => {
+      video.play().catch(() => {});
+    });
+  }, [selectedCategory, items]);
+
+  const setVideoRef = (id: string, el: HTMLVideoElement | null) => {
+    if (el) {
+      videoRefs.current.set(id, el);
+      el.play().catch(() => {});
+    } else {
+      videoRefs.current.delete(id);
+    }
+  };
+
+  // Get the original index in unfiltered items array for navigation to feed
+  const getOriginalIndex = (item: MenuItem) => {
+    return items.findIndex(i => i.id === item.id);
   };
 
   return (
     <div className="w-full h-full pt-20 pb-32 px-4 lg:px-8 overflow-y-auto no-scrollbar bg-black">
       <div className="max-w-6xl mx-auto">
-        <div className="flex items-center gap-2 mb-6 px-1">
-          <h2 className="text-xl lg:text-2xl text-white font-serif tracking-wide">Catálogo</h2>
+        {/* Logo do cliente em evidência */}
+        <div className="flex flex-col items-center mb-6">
+          {business.logoUrl ? (
+            <img
+              src={business.logoUrl}
+              alt={business.name}
+              className="w-16 h-16 rounded-full object-cover border-2 border-brand-accent shadow-lg mb-2"
+            />
+          ) : (
+            <div className="w-16 h-16 rounded-full bg-brand-primary/20 flex items-center justify-center border-2 border-brand-accent mb-2">
+              <span className="text-2xl font-serif text-brand-primary">{business.name?.charAt(0)}</span>
+            </div>
+          )}
+          {business.slogan && (
+            <p className="text-white/50 text-xs tracking-widest uppercase">{business.slogan}</p>
+          )}
         </div>
 
+        {/* Category filter */}
+        {activeCategories.length > 1 && (
+          <div className="flex gap-2 mb-6 overflow-x-auto no-scrollbar pb-1">
+            <button
+              onClick={() => setSelectedCategory(null)}
+              className={`shrink-0 px-4 py-2 rounded-full text-xs font-semibold uppercase tracking-wider transition-all ${
+                selectedCategory === null
+                  ? 'bg-white text-black'
+                  : 'bg-neutral-900 border border-white/10 text-white/70 hover:text-white'
+              }`}
+            >
+              Todos
+            </button>
+            {activeCategories.map(cat => (
+              <button
+                key={cat.id}
+                onClick={() => setSelectedCategory(cat.id)}
+                className={`shrink-0 px-4 py-2 rounded-full text-xs font-semibold uppercase tracking-wider transition-all ${
+                  selectedCategory === cat.id
+                    ? 'bg-white text-black'
+                    : 'bg-neutral-900 border border-white/10 text-white/70 hover:text-white'
+                }`}
+              >
+                {cat.name}
+              </button>
+            ))}
+          </div>
+        )}
+
         <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4 lg:gap-5">
-          {items.map((item, index) => (
+          {filteredItems.map((item) => (
             <button
               key={item.id}
-              onClick={() => onItemClick(index)}
-              className="group relative w-full aspect-[3/4] rounded-2xl overflow-hidden bg-neutral-900 border border-white/5 active:scale-95 hover:scale-[1.02] hover:border-white/15 transition-all duration-200 text-left focus:outline-none cursor-pointer"
+              onClick={() => onItemClick(getOriginalIndex(item))}
+              className="group relative w-full aspect-3/4 rounded-2xl overflow-hidden bg-neutral-900 border border-white/5 active:scale-95 hover:scale-[1.02] hover:border-white/15 transition-all duration-200 text-left focus:outline-none cursor-pointer"
             >
               <div className="absolute inset-0">
                 {item.videoUrl ? (
                   <video
+                    ref={(el) => setVideoRef(item.id, el)}
                     src={item.videoUrl}
                     muted
                     loop
@@ -43,7 +121,7 @@ export const MenuListView: React.FC<MenuListViewProps> = ({ items, categories, o
                     className="w-full h-full object-cover"
                   />
                 )}
-                <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/20 to-transparent" />
+                <div className="absolute inset-0 bg-linear-to-t from-black/90 via-black/20 to-transparent" />
               </div>
 
               <div className="absolute bottom-0 left-0 right-0 p-3 lg:p-4 flex flex-col justify-end h-full">
@@ -54,9 +132,15 @@ export const MenuListView: React.FC<MenuListViewProps> = ({ items, categories, o
                   {item.title}
                 </h3>
                 <div className="flex justify-between items-center mt-1">
-                  <span className="text-white/90 text-sm font-light">
-                    {item.currency} {item.price.toFixed(0)}
-                  </span>
+                  {item.variants && item.variants.length > 0 ? (
+                    <span className="text-white/90 text-xs font-light">
+                      a partir de {item.currency} {Math.min(item.price, ...item.variants.map(v => v.price)).toFixed(0)}
+                    </span>
+                  ) : (
+                    <span className="text-white/90 text-sm font-light">
+                      {item.currency} {item.price.toFixed(0)}
+                    </span>
+                  )}
                   {item.isSignature && (
                     <span className="material-icons-round text-brand-primary text-[10px]" title="Signature">
                       verified

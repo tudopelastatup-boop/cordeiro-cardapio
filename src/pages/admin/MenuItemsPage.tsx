@@ -72,7 +72,7 @@ export const MenuItemsPage: React.FC = () => {
     return (
       <div className="space-y-6">
         <div>
-          <h1 className="text-2xl font-serif text-white mb-1">Cardápio</h1>
+          <h1 className="text-2xl font-serif text-white mb-1">Vitrine</h1>
         </div>
         <div className="space-y-2">
           {[1, 2, 3].map(i => (
@@ -88,7 +88,7 @@ export const MenuItemsPage: React.FC = () => {
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-serif text-white mb-1">Cardápio</h1>
+          <h1 className="text-2xl font-serif text-white mb-1">Vitrine</h1>
           <p className="text-neutral-400 text-sm">
             {videoCount}/{plan.videoLimit} vídeos utilizados
           </p>
@@ -120,7 +120,7 @@ export const MenuItemsPage: React.FC = () => {
       {displayItems.length === 0 ? (
         <div className="text-center py-20">
           <span className="material-icons-round text-5xl text-neutral-700 mb-4 block">restaurant_menu</span>
-          <p className="text-neutral-400 mb-2">Nenhum item no cardápio</p>
+          <p className="text-neutral-400 mb-2">Nenhum item na vitrine</p>
           <p className="text-neutral-600 text-sm mb-6">Adicione seu primeiro item com vídeo</p>
           <Link
             to="/admin/menu/new"
@@ -252,7 +252,7 @@ export const MenuItemsPage: React.FC = () => {
       {displayItems.length > 0 && (
         <p className="text-xs text-neutral-600 flex items-center gap-1">
           <span className="material-icons-round text-xs">info</span>
-          Arraste os itens para reorganizar a ordem no cardápio
+          Arraste os itens para reorganizar a ordem na vitrine
         </p>
       )}
     </div>

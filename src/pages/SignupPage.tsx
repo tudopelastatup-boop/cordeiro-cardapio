@@ -3,7 +3,6 @@ import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { WitrinLogo } from '../components/shared/WitrinLogo';
 import { slugify } from '../utils/slugify';
-import { APP_DOMAIN } from '../lib/constants';
 
 export const SignupPage: React.FC = () => {
   const [name, setName] = useState('');
@@ -100,7 +99,7 @@ export const SignupPage: React.FC = () => {
               />
               {slug && (
                 <p className="mt-1.5 text-xs text-neutral-500">
-                  Seu link: <span className="text-white">{APP_DOMAIN}/{slug}</span>
+                  Seu link: <span className="text-white">{window.location.origin}/{slug}</span>
                 </p>
               )}
             </div>

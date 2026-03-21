@@ -5,7 +5,7 @@ import { VideoUploader } from '../../components/admin/VideoUploader';
 import { canUploadVideo } from '../../utils/planLimits';
 import { supabase } from '../../lib/supabase';
 import { useMenuData } from '../../hooks/useMenuData';
-import { MenuItem, Category } from '../../types';
+import { MenuItem, Category, ItemVariant } from '../../types';
 
 export const MenuItemFormPage: React.FC = () => {
   const { id } = useParams();
@@ -63,6 +63,14 @@ export const MenuItemFormPage: React.FC = () => {
   const [creatingCategory, setCreatingCategory] = useState(false);
   const [localCategories, setLocalCategories] = useState<Category[]>([]);
 
+  // Variants state
+  interface LocalVariant {
+    id?: string;
+    name: string;
+    price: string;
+  }
+  const [variants, setVariants] = useState<LocalVariant[]>([]);
+
   useEffect(() => {
     setLocalCategories(categories);
   }, [categories]);
@@ -81,6 +89,14 @@ export const MenuItemFormPage: React.FC = () => {
         isActive: existingItem.isActive,
       });
       if (existingItem.image) setImagePreview(existingItem.image);
+      // Load variants
+      if (existingItem.variants && existingItem.variants.length > 0) {
+        setVariants(existingItem.variants.map(v => ({
+          id: v.id,
+          name: v.name,
+          price: v.price.toString(),
+        })));
+      }
     }
   }, [existingItem?.id]);
 
@@ -203,18 +219,41 @@ export const MenuItemFormPage: React.FC = () => {
         image_url: imageUrl,
       };
 
+      let itemId: string;
+
       if (isEditing && existingItem) {
         const { error: updateError } = await supabase
           .from('menu_items')
           .update(payload)
           .eq('id', existingItem.id);
         if (updateError) throw new Error(updateError.message);
+        itemId = existingItem.id;
       } else {
         const maxOrder = items.length;
-        const { error: insertError } = await supabase
+        const { data: insertData, error: insertError } = await supabase
           .from('menu_items')
-          .insert({ ...payload, sort_order: maxOrder });
+          .insert({ ...payload, sort_order: maxOrder })
+          .select('id')
+          .single();
         if (insertError) throw new Error(insertError.message);
+        itemId = insertData.id;
+      }
+
+      // Save variants
+      // Delete old variants
+      await supabase.from('item_variants').delete().eq('menu_item_id', itemId);
+      // Insert new variants
+      const validVariants = variants.filter(v => v.name.trim() && v.price && !isNaN(Number(v.price)));
+      if (validVariants.length > 0) {
+        const { error: varErr } = await supabase.from('item_variants').insert(
+          validVariants.map((v, i) => ({
+            menu_item_id: itemId,
+            name: v.name.trim(),
+            price: Number(v.price),
+            sort_order: i,
+          }))
+        );
+        if (varErr) throw new Error('Erro ao salvar tamanhos/preços.');
       }
 
       navigate('/admin/menu');
@@ -262,7 +301,7 @@ export const MenuItemFormPage: React.FC = () => {
             {isEditing ? 'Editar item' : 'Novo item'}
           </h1>
           <p className="text-neutral-400 text-sm">
-            {isEditing ? `Editando "${existingItem?.title}"` : 'Adicione um novo item ao cardápio'}
+            {isEditing ? `Editando "${existingItem?.title}"` : 'Adicione um novo item à vitrine'}
           </p>
         </div>
         {isEditing && (
@@ -431,6 +470,65 @@ export const MenuItemFormPage: React.FC = () => {
                 className="w-full bg-neutral-800/50 border border-white/10 rounded-xl px-4 py-3 text-white text-sm focus:outline-none focus:border-white/30 transition-colors"
                 placeholder="Separe por vírgula: Wagyu, Premium, Favorito"
               />
+            </div>
+
+            {/* Variants / Sizes */}
+            <div>
+              <div className="flex items-center justify-between mb-2">
+                <label className="block text-sm text-neutral-400">Tamanhos e preços</label>
+                <button
+                  type="button"
+                  onClick={() => setVariants(prev => [...prev, { name: '', price: '' }])}
+                  className="flex items-center gap-1 text-xs text-neutral-400 hover:text-white transition-colors"
+                >
+                  <span className="material-icons-round text-sm">add</span>
+                  Adicionar tamanho
+                </button>
+              </div>
+              {variants.length === 0 ? (
+                <p className="text-xs text-neutral-600">Nenhum tamanho adicional. O preço base será usado. Clique em "Adicionar tamanho" para criar variações como P, M, G.</p>
+              ) : (
+                <div className="space-y-2">
+                  {variants.map((v, idx) => (
+                    <div key={idx} className="flex items-center gap-2">
+                      <input
+                        type="text"
+                        value={v.name}
+                        onChange={(e) => {
+                          const copy = [...variants];
+                          copy[idx] = { ...copy[idx], name: e.target.value };
+                          setVariants(copy);
+                        }}
+                        className="flex-1 bg-neutral-800/50 border border-white/10 rounded-xl px-3 py-2.5 text-white text-sm focus:outline-none focus:border-white/30 transition-colors"
+                        placeholder="Nome (ex: P, M, G, 500ml)"
+                      />
+                      <div className="flex items-center gap-1">
+                        <span className="text-neutral-500 text-sm">{form.currency}</span>
+                        <input
+                          type="number"
+                          step="0.01"
+                          min="0"
+                          value={v.price}
+                          onChange={(e) => {
+                            const copy = [...variants];
+                            copy[idx] = { ...copy[idx], price: e.target.value };
+                            setVariants(copy);
+                          }}
+                          className="w-24 bg-neutral-800/50 border border-white/10 rounded-xl px-3 py-2.5 text-white text-sm focus:outline-none focus:border-white/30 transition-colors"
+                          placeholder="0,00"
+                        />
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => setVariants(prev => prev.filter((_, i) => i !== idx))}
+                        className="p-2 text-neutral-500 hover:text-red-400 transition-colors"
+                      >
+                        <span className="material-icons-round text-sm">close</span>
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
 
             <div className="flex items-center gap-6">

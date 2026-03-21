@@ -83,6 +83,7 @@ export const StorePage: React.FC = () => {
           <MenuListView
             items={menuItems}
             categories={categories}
+            business={business}
             onItemClick={handleItemClick}
           />
         );
@@ -90,10 +91,10 @@ export const StorePage: React.FC = () => {
         return <RestaurantProfile business={business} />;
       case 'feed':
         return (
-          <div className="w-full h-[100dvh] bg-black flex items-center justify-center">
+          <div className="w-full h-dvh bg-black flex items-center justify-center">
             <main
               ref={feedContainerRef}
-              className="w-full h-full md:h-[100dvh] md:max-h-[100dvh] md:aspect-9/16 md:max-w-[calc(100dvh*9/16)] overflow-y-scroll snap-y snap-mandatory no-scrollbar scroll-smooth bg-black md:rounded-2xl md:border md:border-white/10"
+              className="w-full h-full md:h-dvh md:max-h-dvh md:aspect-9/16 md:max-w-[calc(100dvh*9/16)] overflow-y-scroll snap-y snap-mandatory no-scrollbar scroll-smooth bg-black md:rounded-2xl md:border md:border-white/10"
             >
               {menuItems.map((item, index) => (
                 <div key={item.id} data-index={index} className="w-full h-full snap-center">

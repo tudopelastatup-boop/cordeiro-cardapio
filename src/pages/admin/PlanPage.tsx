@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
 import { PLANS } from '../../lib/constants';
 import { PlanType } from '../../types';
@@ -6,12 +6,28 @@ import { PlanBadge } from '../../components/admin/PlanBadge';
 import { useMenuData } from '../../hooks/useMenuData';
 
 export const PlanPage: React.FC = () => {
-  const { business } = useAuth();
+  const { business, changePlan } = useAuth();
   const currentPlan = business?.plan || 'free';
   const { videoCount, isLoading } = useMenuData(business?.id);
   const planInfo = PLANS[currentPlan];
+  const [changingTo, setChangingTo] = useState<PlanType | null>(null);
+  const [successPlan, setSuccessPlan] = useState<PlanType | null>(null);
 
   const allPlans: PlanType[] = ['free', 'plan_a', 'plan_b', 'plan_c'];
+
+  const handleChangePlan = async (plan: PlanType) => {
+    if (plan === currentPlan) return;
+    setChangingTo(plan);
+    try {
+      await changePlan(plan);
+      setSuccessPlan(plan);
+      setTimeout(() => setSuccessPlan(null), 3000);
+    } catch (err) {
+      console.error('Erro ao trocar plano:', err);
+    } finally {
+      setChangingTo(null);
+    }
+  };
 
   return (
     <div className="space-y-8">
@@ -19,6 +35,16 @@ export const PlanPage: React.FC = () => {
         <h1 className="text-2xl font-serif text-white mb-1">Meu Plano</h1>
         <p className="text-neutral-400 text-sm">Gerencie sua assinatura</p>
       </div>
+
+      {/* Success message */}
+      {successPlan && (
+        <div className="bg-green-500/10 border border-green-500/20 rounded-xl p-4 flex items-center gap-3">
+          <span className="material-icons-round text-green-400">check_circle</span>
+          <p className="text-sm text-green-300">
+            Plano alterado para <strong>{PLANS[successPlan].name}</strong> com sucesso!
+          </p>
+        </div>
+      )}
 
       {/* Current Plan */}
       <div className="bg-neutral-900/50 border border-white/5 rounded-2xl p-6">
@@ -75,7 +101,9 @@ export const PlanPage: React.FC = () => {
             const plan = PLANS[key];
             const isCurrent = key === currentPlan;
             const isUpgrade = allPlans.indexOf(key) > allPlans.indexOf(currentPlan);
+            const isDowngrade = allPlans.indexOf(key) < allPlans.indexOf(currentPlan);
             const isPopular = key === 'plan_b';
+            const isChanging = changingTo === key;
 
             return (
               <div
@@ -139,17 +167,32 @@ export const PlanPage: React.FC = () => {
                     Plano atual
                   </button>
                 ) : isUpgrade ? (
-                  <button className="w-full py-3 rounded-xl text-sm font-medium bg-white hover:bg-neutral-200 text-black transition-colors">
+                  <button
+                    onClick={() => handleChangePlan(key)}
+                    disabled={isChanging || changingTo !== null}
+                    className="w-full py-3 rounded-xl text-sm font-medium bg-white hover:bg-neutral-200 disabled:opacity-50 text-black transition-colors flex items-center justify-center gap-2"
+                  >
+                    {isChanging ? (
+                      <div className="w-4 h-4 border-2 border-black/20 border-t-black rounded-full animate-spin" />
+                    ) : (
+                      <span className="material-icons-round text-sm">upgrade</span>
+                    )}
                     Fazer upgrade
                   </button>
-                ) : (
+                ) : isDowngrade ? (
                   <button
-                    disabled
-                    className="w-full py-3 rounded-xl text-sm font-medium bg-white/5 text-neutral-600 cursor-default"
+                    onClick={() => handleChangePlan(key)}
+                    disabled={isChanging || changingTo !== null}
+                    className="w-full py-3 rounded-xl text-sm font-medium bg-neutral-800 hover:bg-neutral-700 disabled:opacity-50 text-neutral-300 transition-colors border border-white/10 flex items-center justify-center gap-2"
                   >
-                    Downgrade
+                    {isChanging ? (
+                      <div className="w-4 h-4 border-2 border-white/20 border-t-white rounded-full animate-spin" />
+                    ) : (
+                      <span className="material-icons-round text-sm">south</span>
+                    )}
+                    Alterar
                   </button>
-                )}
+                ) : null}
               </div>
             );
           })}

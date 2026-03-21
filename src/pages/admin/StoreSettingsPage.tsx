@@ -2,7 +2,6 @@ import React, { useState, useRef } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
 import { slugify } from '../../utils/slugify';
 import { supabase } from '../../lib/supabase';
-import { APP_DOMAIN } from '../../lib/constants';
 
 export const StoreSettingsPage: React.FC = () => {
   const { business, updateBusiness } = useAuth();
@@ -27,6 +26,7 @@ export const StoreSettingsPage: React.FC = () => {
     whatsapp: business?.whatsapp || '',
     instagram: business?.instagram || '',
     hours: business?.hours || '',
+    menuUrl: business?.menuUrl || '',
   });
 
   const handleChange = (field: string, value: string) => {
@@ -107,6 +107,7 @@ export const StoreSettingsPage: React.FC = () => {
           whatsapp: form.whatsapp || null,
           instagram: form.instagram || null,
           hours: form.hours || null,
+          menu_url: form.menuUrl || null,
           logo_url: logoUrl,
           cover_image_url: coverImageUrl,
         })
@@ -117,6 +118,7 @@ export const StoreSettingsPage: React.FC = () => {
       // Atualiza contexto local
       updateBusiness({
         ...form,
+        menuUrl: form.menuUrl || undefined,
         logoUrl: logoUrl ?? undefined,
         coverImageUrl: coverImageUrl ?? undefined,
       });
@@ -199,7 +201,7 @@ export const StoreSettingsPage: React.FC = () => {
             <div>
               <label className="block text-sm text-neutral-400 mb-1.5">Slug (URL)</label>
               <div className="flex items-center gap-1">
-                <span className="text-neutral-500 text-sm shrink-0">{APP_DOMAIN}/</span>
+                <span className="text-neutral-500 text-sm shrink-0">{window.location.origin}/</span>
                 <input
                   type="text"
                   value={form.slug}
@@ -240,10 +242,11 @@ export const StoreSettingsPage: React.FC = () => {
               <input
                 type="text"
                 value={form.whatsapp}
-                onChange={(e) => handleChange('whatsapp', e.target.value)}
+                onChange={(e) => handleChange('whatsapp', e.target.value.replace(/\D/g, ''))}
                 className="w-full bg-neutral-800/50 border border-white/10 rounded-xl px-4 py-3 text-white text-sm focus:outline-none focus:border-white/30 transition-colors"
                 placeholder="5511999999999"
               />
+              <p className="text-xs text-neutral-600 mt-1">Apenas números: código do país + DDD + número (ex: 5511999999999)</p>
             </div>
             <div>
               <label className="block text-sm text-neutral-400 mb-1.5">Instagram</label>
@@ -277,6 +280,17 @@ export const StoreSettingsPage: React.FC = () => {
                 className="w-full bg-neutral-800/50 border border-white/10 rounded-xl px-4 py-3 text-white text-sm focus:outline-none focus:border-white/30 transition-colors"
                 placeholder="Rua, número - Bairro, Cidade"
               />
+            </div>
+            <div className="sm:col-span-2">
+              <label className="block text-sm text-neutral-400 mb-1.5">Link do cardápio de pedidos (delivery)</label>
+              <input
+                type="url"
+                value={form.menuUrl}
+                onChange={(e) => handleChange('menuUrl', e.target.value)}
+                className="w-full bg-neutral-800/50 border border-white/10 rounded-xl px-4 py-3 text-white text-sm focus:outline-none focus:border-white/30 transition-colors"
+                placeholder="https://seudelivery.com.br/cardapio"
+              />
+              <p className="text-xs text-neutral-600 mt-1">Link externo para pedidos (iFood, Rappi, site próprio, etc.)</p>
             </div>
           </div>
         </div>
