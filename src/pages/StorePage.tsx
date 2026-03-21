@@ -25,19 +25,24 @@ export const StorePage: React.FC = () => {
     const observer = new IntersectionObserver(
       (entries) => {
         if (isProgrammaticScroll.current) return;
-        entries.forEach((entry) => {
-          if (entry.isIntersecting) {
-            const index = Number(entry.target.getAttribute('data-index'));
-            if (!isNaN(index)) setActiveIndex(index);
+        // Find the entry with the highest visibility
+        let best: IntersectionObserverEntry | null = null;
+        for (const entry of entries) {
+          if (entry.isIntersecting && (!best || entry.intersectionRatio > best.intersectionRatio)) {
+            best = entry;
           }
-        });
+        }
+        if (best) {
+          const index = Number(best.target.getAttribute('data-index'));
+          if (!isNaN(index)) setActiveIndex(index);
+        }
       },
-      { root: container, threshold: 0.6 }
+      { root: container, threshold: [0.1, 0.5, 0.8] }
     );
 
-    const children = container.querySelectorAll('.snap-center');
+    const children = container.querySelectorAll('[data-index]');
     children.forEach((child) => observer.observe(child));
-    return () => children.forEach((child) => observer.unobserve(child));
+    return () => observer.disconnect();
   }, [activeTab]);
 
   useEffect(() => {
