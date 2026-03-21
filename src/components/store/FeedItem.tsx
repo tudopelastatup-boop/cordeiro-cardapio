@@ -7,13 +7,13 @@ interface FeedItemProps {
   item: MenuItem;
   isActive: boolean;
   categoryName?: string;
+  onFullscreen?: () => void;
 }
 
-export const FeedItem: React.FC<FeedItemProps> = ({ item, isActive, categoryName }) => {
+export const FeedItem: React.FC<FeedItemProps> = ({ item, isActive, categoryName, onFullscreen }) => {
   const [isExpanded, setIsExpanded] = useState(false);
   const [orientation, setOrientation] = useState<VideoOrientation>('vertical');
   const videoRef = useRef<HTMLVideoElement>(null);
-  const sectionRef = useRef<HTMLElement>(null);
 
   const formattedPrice = `${item.currency} ${item.price.toFixed(2)}`;
   const hasVariants = item.variants && item.variants.length > 0;
@@ -31,7 +31,6 @@ export const FeedItem: React.FC<FeedItemProps> = ({ item, isActive, categoryName
     }
   }, []);
 
-  // Play/pause based on isActive
   useEffect(() => {
     const video = videoRef.current;
     if (!video) return;
@@ -42,26 +41,14 @@ export const FeedItem: React.FC<FeedItemProps> = ({ item, isActive, categoryName
     }
   }, [isActive]);
 
-  // Also play when video data becomes ready
   const handleCanPlay = useCallback(() => {
     if (isActive && videoRef.current) {
       videoRef.current.play().catch(() => {});
     }
   }, [isActive]);
 
-  // Fullscreen: request on the section element so the whole UI goes fullscreen
-  const handleFullscreen = useCallback(() => {
-    const section = sectionRef.current;
-    if (!section) return;
-    if (section.requestFullscreen) {
-      section.requestFullscreen().catch((e) => console.warn('Fullscreen failed:', e));
-    } else if ((section as any).webkitRequestFullscreen) {
-      (section as any).webkitRequestFullscreen();
-    }
-  }, []);
-
   return (
-    <section ref={sectionRef} className="relative w-full h-full snap-center flex items-center justify-center bg-black overflow-hidden shrink-0">
+    <section className="relative w-full h-full snap-center flex items-center justify-center bg-black overflow-hidden shrink-0">
       {/* Video/Image background */}
       <div className="absolute inset-0 z-0 select-none">
         {item.videoUrl ? (
@@ -135,9 +122,9 @@ export const FeedItem: React.FC<FeedItemProps> = ({ item, isActive, categoryName
       </div>
 
       {/* Fullscreen button for horizontal videos */}
-      {item.videoUrl && orientation === 'horizontal' && (
+      {item.videoUrl && orientation === 'horizontal' && onFullscreen && (
         <button
-          onClick={handleFullscreen}
+          onClick={onFullscreen}
           className="absolute top-20 right-4 z-30 flex items-center gap-2 px-3 py-2 bg-white/10 backdrop-blur-md border border-white/20 rounded-full text-white text-xs font-medium active:scale-95 transition-transform"
         >
           <span className="material-icons-round text-base">fullscreen</span>

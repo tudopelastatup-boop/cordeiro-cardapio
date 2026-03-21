@@ -7,7 +7,7 @@ import { FeedItem } from '../components/store/FeedItem';
 import { MenuListView } from '../components/store/MenuListView';
 import { RestaurantProfile } from '../components/store/RestaurantProfile';
 import { LoadingSpinner } from '../components/shared/LoadingSpinner';
-import { Tab } from '../types';
+import { Tab, MenuItem } from '../types';
 
 export const StorePage: React.FC = () => {
   const { slug } = useParams<{ slug: string }>();
@@ -15,6 +15,7 @@ export const StorePage: React.FC = () => {
 
   const [activeTab, setActiveTab] = useState<Tab>('list');
   const [activeIndex, setActiveIndex] = useState(0);
+  const [fullscreenItem, setFullscreenItem] = useState<MenuItem | null>(null);
   const feedContainerRef = useRef<HTMLDivElement>(null);
   const isProgrammaticScroll = useRef(false);
 
@@ -25,7 +26,6 @@ export const StorePage: React.FC = () => {
     const observer = new IntersectionObserver(
       (entries) => {
         if (isProgrammaticScroll.current) return;
-        // Find the entry with the highest visibility
         let best: IntersectionObserverEntry | null = null;
         for (const entry of entries) {
           if (entry.isIntersecting && (!best || entry.intersectionRatio > best.intersectionRatio)) {
@@ -107,6 +107,7 @@ export const StorePage: React.FC = () => {
                     item={item}
                     isActive={index === activeIndex}
                     categoryName={getCategoryName(item.categoryId)}
+                    onFullscreen={() => setFullscreenItem(item)}
                   />
                 </div>
               ))}
@@ -124,6 +125,88 @@ export const StorePage: React.FC = () => {
       {activeTab !== 'info' && <TopHeader businessName={business.name} />}
       <div className="w-full h-full">{renderContent()}</div>
       <BottomNav activeTab={activeTab} setActiveTab={setActiveTab} />
+
+      {/* Fullscreen video modal - sits above everything */}
+      {fullscreenItem && fullscreenItem.videoUrl && (
+        <VideoFullscreenModal
+          item={fullscreenItem}
+          onClose={() => setFullscreenItem(null)}
+        />
+      )}
+    </div>
+  );
+};
+
+// Modal component - completely independent, renders on top of everything
+const VideoFullscreenModal: React.FC<{
+  item: MenuItem;
+  onClose: () => void;
+}> = ({ item, onClose }) => {
+  const videoRef = useRef<HTMLVideoElement>(null);
+  const hasVariants = item.variants && item.variants.length > 0;
+  const formattedPrice = `${item.currency} ${item.price.toFixed(2)}`;
+
+  useEffect(() => {
+    // Lock body scroll
+    document.body.style.overflow = 'hidden';
+    // Play video
+    videoRef.current?.play().catch(() => {});
+    // Close on Escape
+    const handleKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') onClose();
+    };
+    window.addEventListener('keydown', handleKey);
+    return () => {
+      document.body.style.overflow = '';
+      window.removeEventListener('keydown', handleKey);
+    };
+  }, [onClose]);
+
+  return (
+    <div
+      className="fixed inset-0 z-50 bg-black flex items-center justify-center"
+      onClick={onClose}
+    >
+      {/* Video */}
+      <video
+        ref={videoRef}
+        src={item.videoUrl}
+        autoPlay
+        muted
+        loop
+        playsInline
+        className="w-full h-full object-contain"
+        onClick={(e) => e.stopPropagation()}
+      />
+
+      {/* Close button */}
+      <button
+        onClick={onClose}
+        className="absolute top-4 right-4 z-10 w-11 h-11 bg-black/50 backdrop-blur-sm rounded-full flex items-center justify-center text-white hover:bg-black/70 transition-colors"
+      >
+        <span className="material-icons-round">close</span>
+      </button>
+
+      {/* Item info at bottom */}
+      <div
+        className="absolute bottom-0 left-0 right-0 p-6 bg-linear-to-t from-black/80 via-black/40 to-transparent pointer-events-none"
+      >
+        <h2 className="text-xl font-serif font-bold text-white mb-1">{item.title}</h2>
+        <div className="text-white font-serif">
+          {hasVariants ? (
+            <div className="flex flex-wrap gap-3">
+              <span className="text-sm opacity-70">Base: {formattedPrice}</span>
+              {item.variants!.map(v => (
+                <span key={v.id} className="text-sm opacity-70">
+                  {v.name}: {item.currency} {v.price.toFixed(2)}
+                </span>
+              ))}
+            </div>
+          ) : (
+            <span className="text-lg">{formattedPrice}</span>
+          )}
+        </div>
+      </div>
     </div>
   );
 };
