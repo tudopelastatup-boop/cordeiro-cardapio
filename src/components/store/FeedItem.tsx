@@ -125,7 +125,8 @@ export const FeedItem: React.FC<FeedItemProps> = ({ item, isActive, categoryName
       {item.videoUrl && orientation === 'horizontal' && onFullscreen && (
         <button
           onClick={onFullscreen}
-          className="absolute top-20 right-4 z-30 flex items-center gap-2 px-3 py-2 bg-white/10 backdrop-blur-md border border-white/20 rounded-full text-white text-xs font-medium active:scale-95 transition-transform"
+          onPointerDown={onFullscreen}
+          className="absolute top-32 right-4 z-40 flex items-center gap-2 px-3 py-2 bg-white/10 backdrop-blur-md border border-white/20 rounded-full text-white text-xs font-medium active:scale-95 transition-transform"
         >
           <span className="material-icons-round text-base">fullscreen</span>
           Tela cheia
@@ -133,7 +134,7 @@ export const FeedItem: React.FC<FeedItemProps> = ({ item, isActive, categoryName
       )}
 
       {/* Content */}
-      <div className="absolute bottom-0 left-0 right-0 top-0 z-30 flex flex-col justify-end pb-32 md:pb-24 px-6">
+      <div className="absolute bottom-0 left-0 right-0 z-30 flex flex-col justify-end pb-32 md:pb-24 px-6">
         <div className="flex justify-start mb-3 animate-fade-in-up" style={{ animationDelay: '0.1s' }}>
           <span className="px-3 py-1 bg-white/10 backdrop-blur-md border border-white/20 text-white/90 text-[11px] font-semibold uppercase tracking-widest rounded-full">
             {categoryName || item.categoryId}

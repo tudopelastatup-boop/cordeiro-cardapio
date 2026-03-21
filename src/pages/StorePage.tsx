@@ -1,4 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import { useParams } from 'react-router-dom';
 import { useBusiness } from '../hooks/useBusiness';
 import { TopHeader } from '../components/store/TopHeader';
@@ -126,12 +127,13 @@ export const StorePage: React.FC = () => {
       <div className="w-full h-full">{renderContent()}</div>
       <BottomNav activeTab={activeTab} setActiveTab={setActiveTab} />
 
-      {/* Fullscreen video modal - sits above everything */}
-      {fullscreenItem && fullscreenItem.videoUrl && (
+      {/* Fullscreen video modal - portal to body so nothing blocks it */}
+      {fullscreenItem && fullscreenItem.videoUrl && createPortal(
         <VideoFullscreenModal
           item={fullscreenItem}
           onClose={() => setFullscreenItem(null)}
-        />
+        />,
+        document.body
       )}
     </div>
   );
