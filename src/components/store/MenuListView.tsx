@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { MenuItem, Category, Business } from '../../types';
 
 interface MenuListViewProps {
@@ -10,7 +10,8 @@ interface MenuListViewProps {
 
 export const MenuListView: React.FC<MenuListViewProps> = ({ items, categories, business, onItemClick }) => {
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
-  const videoRefs = useRef<Map<string, HTMLVideoElement>>(new Map());
+  const [visibleIds, setVisibleIds] = useState<Set<string>>(new Set());
+  const gridRef = useRef<HTMLDivElement>(null);
 
   const getCategoryName = (categoryId: string) => {
     return categories.find(c => c.id === categoryId)?.name || '';
@@ -25,21 +26,38 @@ export const MenuListView: React.FC<MenuListViewProps> = ({ items, categories, b
     ? items.filter(item => item.categoryId === selectedCategory)
     : items;
 
-  // Play all videos on mount and when filter changes
+  // Observe which cards are visible and only play those videos
   useEffect(() => {
-    videoRefs.current.forEach((video) => {
-      video.play().catch(() => {});
-    });
-  }, [selectedCategory, items]);
+    const grid = gridRef.current;
+    if (!grid) return;
 
-  const setVideoRef = (id: string, el: HTMLVideoElement | null) => {
-    if (el) {
-      videoRefs.current.set(id, el);
-      el.play().catch(() => {});
-    } else {
-      videoRefs.current.delete(id);
-    }
-  };
+    const observer = new IntersectionObserver(
+      (entries) => {
+        setVisibleIds(prev => {
+          const next = new Set(prev);
+          for (const entry of entries) {
+            const id = entry.target.getAttribute('data-item-id');
+            if (!id) continue;
+            if (entry.isIntersecting) {
+              next.add(id);
+            } else {
+              next.delete(id);
+            }
+          }
+          return next;
+        });
+      },
+      { rootMargin: '200px 0px', threshold: 0.01 }
+    );
+
+    const cards = grid.querySelectorAll('[data-item-id]');
+    cards.forEach(card => observer.observe(card));
+    return () => observer.disconnect();
+  }, [selectedCategory, filteredItems.length]);
+
+  const videoRefCallback = useCallback((el: HTMLVideoElement | null) => {
+    if (el) el.play().catch(() => {});
+  }, []);
 
   // Get the original index in unfiltered items array for navigation to feed
   const getOriginalIndex = (item: MenuItem) => {
@@ -96,17 +114,20 @@ export const MenuListView: React.FC<MenuListViewProps> = ({ items, categories, b
           </div>
         )}
 
-        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4 lg:gap-5">
-          {filteredItems.map((item) => (
+        <div ref={gridRef} className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4 lg:gap-5">
+          {filteredItems.map((item) => {
+            const isVisible = visibleIds.has(item.id);
+            return (
             <button
               key={item.id}
+              data-item-id={item.id}
               onClick={() => onItemClick(getOriginalIndex(item))}
               className="group relative w-full aspect-3/4 rounded-2xl overflow-hidden bg-neutral-900 border border-white/5 active:scale-95 hover:scale-[1.02] hover:border-white/15 transition-all duration-200 text-left focus:outline-none cursor-pointer"
             >
               <div className="absolute inset-0">
-                {item.videoUrl ? (
+                {item.videoUrl && isVisible ? (
                   <video
-                    ref={(el) => setVideoRef(item.id, el)}
+                    ref={videoRefCallback}
                     src={item.videoUrl}
                     muted
                     loop
@@ -114,6 +135,8 @@ export const MenuListView: React.FC<MenuListViewProps> = ({ items, categories, b
                     autoPlay
                     className="w-full h-full object-cover"
                   />
+                ) : item.videoUrl ? (
+                  <div className="w-full h-full bg-neutral-800" />
                 ) : (
                   <img
                     src={item.image}
@@ -149,7 +172,8 @@ export const MenuListView: React.FC<MenuListViewProps> = ({ items, categories, b
                 </div>
               </div>
             </button>
-          ))}
+            );
+          })}
         </div>
 
         <div className="mt-12 pb-8 flex items-center justify-center gap-2">

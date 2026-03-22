@@ -96,22 +96,32 @@ export const StorePage: React.FC = () => {
       case 'info':
         return <RestaurantProfile business={business} />;
       case 'feed':
+        // Only render items within a window of 2 around the active index
+        // This keeps ~5 items in DOM max (active + 2 before + 2 after)
+        const windowSize = 2;
         return (
           <div className="w-full h-dvh bg-black flex items-center justify-center">
             <main
               ref={feedContainerRef}
               className="w-full h-full md:h-dvh md:max-h-dvh md:aspect-9/16 md:max-w-[calc(100dvh*9/16)] overflow-y-scroll snap-y snap-mandatory no-scrollbar scroll-smooth bg-black md:rounded-2xl md:border md:border-white/10"
             >
-              {menuItems.map((item, index) => (
-                <div key={item.id} data-index={index} className="w-full h-full snap-center">
-                  <FeedItem
-                    item={item}
-                    isActive={index === activeIndex}
-                    categoryName={getCategoryName(item.categoryId)}
-                    onFullscreen={() => setFullscreenItem(item)}
-                  />
-                </div>
-              ))}
+              {menuItems.map((item, index) => {
+                const isNearby = Math.abs(index - activeIndex) <= windowSize;
+                return (
+                  <div key={item.id} data-index={index} className="w-full h-full snap-center">
+                    {isNearby ? (
+                      <FeedItem
+                        item={item}
+                        isActive={index === activeIndex}
+                        categoryName={getCategoryName(item.categoryId)}
+                        onFullscreen={() => setFullscreenItem(item)}
+                      />
+                    ) : (
+                      <div className="w-full h-full bg-black" />
+                    )}
+                  </div>
+                );
+              })}
               <div className="h-1 w-full snap-start" />
             </main>
           </div>

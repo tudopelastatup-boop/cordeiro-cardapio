@@ -60,16 +60,16 @@ export const FeedItem: React.FC<FeedItemProps> = ({ item, isActive, categoryName
                   muted
                   loop
                   playsInline
-                  autoPlay
+                  preload={isActive ? 'auto' : 'none'}
                   className="absolute inset-0 w-full h-full object-cover blur-2xl opacity-30 scale-110"
                 />
                 <video
                   ref={videoRef}
                   src={item.videoUrl}
-                  autoPlay
                   muted
                   loop
                   playsInline
+                  preload={isActive ? 'auto' : 'metadata'}
                   onLoadedMetadata={handleLoadedMetadata}
                   onCanPlay={handleCanPlay}
                   className="relative w-full max-h-[50vh] object-contain z-10"
@@ -82,16 +82,16 @@ export const FeedItem: React.FC<FeedItemProps> = ({ item, isActive, categoryName
                   muted
                   loop
                   playsInline
-                  autoPlay
+                  preload={isActive ? 'auto' : 'none'}
                   className="absolute inset-0 w-full h-full object-cover blur-2xl opacity-30 scale-110"
                 />
                 <video
                   ref={videoRef}
                   src={item.videoUrl}
-                  autoPlay
                   muted
                   loop
                   playsInline
+                  preload={isActive ? 'auto' : 'metadata'}
                   onLoadedMetadata={handleLoadedMetadata}
                   onCanPlay={handleCanPlay}
                   className="relative w-full max-h-[70vh] object-contain z-10"
@@ -101,10 +101,10 @@ export const FeedItem: React.FC<FeedItemProps> = ({ item, isActive, categoryName
               <video
                 ref={videoRef}
                 src={item.videoUrl}
-                autoPlay
                 muted
                 loop
                 playsInline
+                preload={isActive ? 'auto' : 'metadata'}
                 onLoadedMetadata={handleLoadedMetadata}
                 onCanPlay={handleCanPlay}
                 className="w-full h-full object-cover"
