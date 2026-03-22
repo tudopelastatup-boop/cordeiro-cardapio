@@ -103,14 +103,15 @@ export const StorePage: React.FC = () => {
 
   return (
     <div className="relative w-full h-full bg-black text-white overflow-hidden">
-      {/* TopHeader always mounted, just hidden on info tab */}
+      {/* TopHeader (absolute z-40) and BottomNav (fixed z-50) position themselves */}
       <div className={activeTab === 'info' ? 'invisible' : ''}>
         <TopHeader businessName={business.name} />
       </div>
+      <BottomNav activeTab={activeTab} setActiveTab={setActiveTab} />
 
-      {/* All tabs use absolute fill so layout never shifts when switching.
-           visibility:hidden preserves scroll position (display:none would reset it). */}
-      <div className={`absolute inset-0 ${activeTab === 'list' ? 'z-10 visible' : 'z-0 invisible'}`}>
+      {/* All tabs use absolute fill + visibility to preserve scroll position.
+           display:none would reset scroll, visibility:hidden keeps it. */}
+      <div className={`absolute inset-0 ${activeTab === 'list' ? 'visible z-10' : 'invisible z-0'}`}>
         <MenuListView
           items={menuItems}
           categories={categories}
@@ -119,11 +120,11 @@ export const StorePage: React.FC = () => {
         />
       </div>
 
-      <div className={`absolute inset-0 ${activeTab === 'info' ? 'z-10 visible' : 'z-0 invisible'}`}>
+      <div className={`absolute inset-0 ${activeTab === 'info' ? 'visible z-10' : 'invisible z-0'}`}>
         <RestaurantProfile business={business} />
       </div>
 
-      <div className={`absolute inset-0 ${activeTab === 'feed' ? 'z-10 visible' : 'z-0 invisible'}`}>
+      <div className={`absolute inset-0 ${activeTab === 'feed' ? 'visible z-10' : 'invisible z-0'}`}>
         <div className="w-full h-dvh bg-black flex items-center justify-center">
           <main
             ref={feedContainerRef}
@@ -150,8 +151,6 @@ export const StorePage: React.FC = () => {
           </main>
         </div>
       </div>
-
-      <BottomNav activeTab={activeTab} setActiveTab={setActiveTab} />
 
       {/* Fullscreen video modal - portal to body so nothing blocks it */}
       {fullscreenItem && fullscreenItem.videoUrl && createPortal(
