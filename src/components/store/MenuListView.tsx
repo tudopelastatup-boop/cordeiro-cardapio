@@ -10,7 +10,6 @@ interface MenuListViewProps {
 
 export const MenuListView: React.FC<MenuListViewProps> = ({ items, categories, business, onItemClick }) => {
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
-  const [visibleIds, setVisibleIds] = useState<Set<string>>(new Set());
   const gridRef = useRef<HTMLDivElement>(null);
 
   const getCategoryName = (categoryId: string) => {
@@ -26,31 +25,34 @@ export const MenuListView: React.FC<MenuListViewProps> = ({ items, categories, b
     ? items.filter(item => item.categoryId === selectedCategory)
     : items;
 
-  // Observe which cards are visible and only play those videos
+  // Observe which rows are visible — only load videos for visible rows
+  // Each row = 3 items on mobile. We track by row index.
+  const [visibleRows, setVisibleRows] = useState<Set<number>>(new Set());
+
   useEffect(() => {
     const grid = gridRef.current;
     if (!grid) return;
 
     const observer = new IntersectionObserver(
       (entries) => {
-        setVisibleIds(prev => {
+        setVisibleRows(prev => {
           const next = new Set(prev);
           for (const entry of entries) {
-            const id = entry.target.getAttribute('data-item-id');
-            if (!id) continue;
+            const row = Number(entry.target.getAttribute('data-row'));
+            if (isNaN(row)) continue;
             if (entry.isIntersecting) {
-              next.add(id);
+              next.add(row);
             } else {
-              next.delete(id);
+              next.delete(row);
             }
           }
           return next;
         });
       },
-      { rootMargin: '200px 0px', threshold: 0.01 }
+      { rootMargin: '100px 0px', threshold: 0.01 }
     );
 
-    const cards = grid.querySelectorAll('[data-item-id]');
+    const cards = grid.querySelectorAll('[data-row]');
     cards.forEach(card => observer.observe(card));
     return () => observer.disconnect();
   }, [selectedCategory, filteredItems.length]);
@@ -115,17 +117,18 @@ export const MenuListView: React.FC<MenuListViewProps> = ({ items, categories, b
         )}
 
         <div ref={gridRef} className="grid grid-cols-3 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4 lg:gap-5">
-          {filteredItems.map((item) => {
-            const isVisible = visibleIds.has(item.id);
+          {filteredItems.map((item, index) => {
+            const row = Math.floor(index / 3);
+            const shouldPlayVideo = item.videoUrl && visibleRows.has(row);
             return (
             <button
               key={item.id}
-              data-item-id={item.id}
+              data-row={row}
               onClick={() => onItemClick(getOriginalIndex(item))}
               className="group relative w-full aspect-3/4 rounded-2xl overflow-hidden bg-neutral-900 border border-white/5 active:scale-95 hover:scale-[1.02] hover:border-white/15 transition-all duration-200 text-left focus:outline-none cursor-pointer"
             >
               <div className="absolute inset-0">
-                {item.videoUrl && isVisible ? (
+                {shouldPlayVideo ? (
                   <video
                     ref={videoRefCallback}
                     src={item.videoUrl}
@@ -135,8 +138,6 @@ export const MenuListView: React.FC<MenuListViewProps> = ({ items, categories, b
                     autoPlay
                     className="w-full h-full object-cover"
                   />
-                ) : item.videoUrl ? (
-                  <div className="w-full h-full bg-neutral-800" />
                 ) : (
                   <img
                     src={item.image}
