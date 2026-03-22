@@ -103,11 +103,14 @@ export const StorePage: React.FC = () => {
 
   return (
     <div className="relative w-full h-full bg-black text-white overflow-hidden">
-      {activeTab !== 'info' && <TopHeader businessName={business.name} />}
+      {/* TopHeader always mounted, just hidden on info tab */}
+      <div className={activeTab === 'info' ? 'invisible' : ''}>
+        <TopHeader businessName={business.name} />
+      </div>
 
-      {/* All tabs stay mounted — use invisible+absolute to preserve scroll position.
-           display:none resets scroll, so we keep inactive tabs in the DOM but off-screen. */}
-      <div className={`w-full h-full ${activeTab === 'list' ? 'relative z-10' : 'absolute inset-0 invisible'}`}>
+      {/* All tabs use absolute fill so layout never shifts when switching.
+           visibility:hidden preserves scroll position (display:none would reset it). */}
+      <div className={`absolute inset-0 ${activeTab === 'list' ? 'z-10 visible' : 'z-0 invisible'}`}>
         <MenuListView
           items={menuItems}
           categories={categories}
@@ -116,11 +119,11 @@ export const StorePage: React.FC = () => {
         />
       </div>
 
-      <div className={`w-full h-full ${activeTab === 'info' ? 'relative z-10' : 'absolute inset-0 invisible'}`}>
+      <div className={`absolute inset-0 ${activeTab === 'info' ? 'z-10 visible' : 'z-0 invisible'}`}>
         <RestaurantProfile business={business} />
       </div>
 
-      <div className={`w-full h-full ${activeTab === 'feed' ? 'relative z-10' : 'absolute inset-0 invisible'}`}>
+      <div className={`absolute inset-0 ${activeTab === 'feed' ? 'z-10 visible' : 'z-0 invisible'}`}>
         <div className="w-full h-dvh bg-black flex items-center justify-center">
           <main
             ref={feedContainerRef}
