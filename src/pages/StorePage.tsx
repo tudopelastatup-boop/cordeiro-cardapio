@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { createPortal } from 'react-dom';
 import { useParams } from 'react-router-dom';
 import { useBusiness } from '../hooks/useBusiness';
@@ -20,6 +20,10 @@ export const StorePage: React.FC = () => {
   const feedContainerRef = useRef<HTMLDivElement>(null);
   const isProgrammaticScroll = useRef(false);
 
+  // Save scroll positions per tab so we can restore when switching back
+  const scrollPositions = useRef<Record<string, number>>({ list: 0, feed: 0, info: 0 });
+  const prevTab = useRef<Tab>(activeTab);
+
   // Set page title: "Nome do Cliente - Witrin"
   useEffect(() => {
     if (business?.name) {
@@ -27,6 +31,33 @@ export const StorePage: React.FC = () => {
     }
     return () => { document.title = 'Witrin'; };
   }, [business?.name]);
+
+  // Save scroll of outgoing tab, restore scroll of incoming tab
+  useEffect(() => {
+    // Save the scroll position of the tab we're leaving
+    const leaving = prevTab.current;
+    if (leaving === 'list' || leaving === 'info') {
+      // MenuListView and RestaurantProfile scroll inside their own container
+      const container = document.querySelector(`[data-tab="${leaving}"]`);
+      if (container) {
+        const scrollable = container.querySelector('.overflow-y-auto, .overflow-y-scroll') || container;
+        scrollPositions.current[leaving] = (scrollable as HTMLElement).scrollTop;
+      }
+    }
+
+    prevTab.current = activeTab;
+
+    // Restore scroll position of the tab we're entering
+    requestAnimationFrame(() => {
+      if (activeTab === 'list' || activeTab === 'info') {
+        const container = document.querySelector(`[data-tab="${activeTab}"]`);
+        if (container) {
+          const scrollable = container.querySelector('.overflow-y-auto, .overflow-y-scroll') || container;
+          (scrollable as HTMLElement).scrollTop = scrollPositions.current[activeTab];
+        }
+      }
+    });
+  }, [activeTab]);
 
   // Feed: detect which item is most visible via IntersectionObserver
   useEffect(() => {
@@ -63,7 +94,6 @@ export const StorePage: React.FC = () => {
       if (targetElement) {
         targetElement.scrollIntoView({ behavior: 'instant' });
       }
-      // Use requestAnimationFrame to re-enable observer after layout settles
       requestAnimationFrame(() => {
         requestAnimationFrame(() => {
           isProgrammaticScroll.current = false;
@@ -76,6 +106,10 @@ export const StorePage: React.FC = () => {
     setActiveIndex(index);
     setActiveTab('feed');
   };
+
+  const handleTabChange = useCallback((tab: Tab) => {
+    setActiveTab(tab);
+  }, []);
 
   const getCategoryName = (categoryId: string) => {
     return categories.find(c => c.id === categoryId)?.name || '';
@@ -91,7 +125,7 @@ export const StorePage: React.FC = () => {
 
   if (error || !business) {
     return (
-      <div className="w-full h-[100dvh] bg-black flex flex-col items-center justify-center text-center px-6">
+      <div className="w-full h-dvh bg-black flex flex-col items-center justify-center text-center px-6">
         <span className="material-icons-round text-5xl text-neutral-700 mb-4">storefront</span>
         <h1 className="text-xl font-serif text-white mb-2">Loja não encontrada</h1>
         <p className="text-neutral-400 text-sm">O link que você acessou não existe ou foi removido.</p>
@@ -101,56 +135,63 @@ export const StorePage: React.FC = () => {
 
   const windowSize = 2;
 
+  const renderContent = () => {
+    switch (activeTab) {
+      case 'list':
+        return (
+          <div data-tab="list" className="w-full h-full">
+            <MenuListView
+              items={menuItems}
+              categories={categories}
+              business={business}
+              onItemClick={handleItemClick}
+            />
+          </div>
+        );
+      case 'info':
+        return (
+          <div data-tab="info" className="w-full h-full">
+            <RestaurantProfile business={business} />
+          </div>
+        );
+      case 'feed':
+        return (
+          <div className="w-full h-dvh bg-black flex items-center justify-center">
+            <main
+              ref={feedContainerRef}
+              className="w-full h-full md:h-dvh md:max-h-dvh md:aspect-9/16 md:max-w-[calc(100dvh*9/16)] overflow-y-scroll snap-y snap-mandatory no-scrollbar bg-black md:rounded-2xl md:border md:border-white/10"
+            >
+              {menuItems.map((item, index) => {
+                const isNearby = Math.abs(index - activeIndex) <= windowSize;
+                return (
+                  <div key={item.id} data-index={index} className="w-full h-full snap-center">
+                    {isNearby ? (
+                      <FeedItem
+                        item={item}
+                        isActive={index === activeIndex}
+                        categoryName={getCategoryName(item.categoryId)}
+                        onFullscreen={() => setFullscreenItem(item)}
+                      />
+                    ) : (
+                      <div className="w-full h-full bg-black" />
+                    )}
+                  </div>
+                );
+              })}
+              <div className="h-1 w-full snap-start" />
+            </main>
+          </div>
+        );
+      default:
+        return null;
+    }
+  };
+
   return (
     <div className="relative w-full h-full bg-black text-white overflow-hidden">
-      {/* TopHeader (absolute z-40) and BottomNav (fixed z-50) position themselves */}
-      <div className={activeTab === 'info' ? 'invisible' : ''}>
-        <TopHeader businessName={business.name} />
-      </div>
-      <BottomNav activeTab={activeTab} setActiveTab={setActiveTab} />
-
-      {/* All tabs use absolute fill + visibility to preserve scroll position.
-           display:none would reset scroll, visibility:hidden keeps it. */}
-      <div className={`absolute inset-0 ${activeTab === 'list' ? 'visible z-10' : 'invisible z-0'}`}>
-        <MenuListView
-          items={menuItems}
-          categories={categories}
-          business={business}
-          onItemClick={handleItemClick}
-        />
-      </div>
-
-      <div className={`absolute inset-0 ${activeTab === 'info' ? 'visible z-10' : 'invisible z-0'}`}>
-        <RestaurantProfile business={business} />
-      </div>
-
-      <div className={`absolute inset-0 ${activeTab === 'feed' ? 'visible z-10' : 'invisible z-0'}`}>
-        <div className="w-full h-dvh bg-black flex items-center justify-center">
-          <main
-            ref={feedContainerRef}
-            className="w-full h-full md:h-dvh md:max-h-dvh md:aspect-9/16 md:max-w-[calc(100dvh*9/16)] overflow-y-scroll snap-y snap-mandatory no-scrollbar bg-black md:rounded-2xl md:border md:border-white/10"
-          >
-            {menuItems.map((item, index) => {
-              const isNearby = Math.abs(index - activeIndex) <= windowSize;
-              return (
-                <div key={item.id} data-index={index} className="w-full h-full snap-center">
-                  {isNearby ? (
-                    <FeedItem
-                      item={item}
-                      isActive={index === activeIndex}
-                      categoryName={getCategoryName(item.categoryId)}
-                      onFullscreen={() => setFullscreenItem(item)}
-                    />
-                  ) : (
-                    <div className="w-full h-full bg-black" />
-                  )}
-                </div>
-              );
-            })}
-            <div className="h-1 w-full snap-start" />
-          </main>
-        </div>
-      </div>
+      {activeTab !== 'info' && <TopHeader businessName={business.name} />}
+      <div className="w-full h-full">{renderContent()}</div>
+      <BottomNav activeTab={activeTab} setActiveTab={handleTabChange} />
 
       {/* Fullscreen video modal - portal to body so nothing blocks it */}
       {fullscreenItem && fullscreenItem.videoUrl && createPortal(
