@@ -11,12 +11,12 @@ export const RestaurantProfile: React.FC<RestaurantProfileProps> = ({ business }
 
   return (
     <div className="w-full h-full overflow-y-auto no-scrollbar bg-black pb-32">
-      {/* Cover - object-contain para não cortar laterais */}
+      {/* Cover - object-contain para nunca cortar a imagem */}
       <div className="relative h-64 md:h-80 w-full bg-black">
         {business.coverImageUrl ? (
           <img
             src={business.coverImageUrl}
-            className="w-full h-full object-cover"
+            className="w-full h-full object-contain"
             alt="Cover"
           />
         ) : (

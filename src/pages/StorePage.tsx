@@ -20,6 +20,14 @@ export const StorePage: React.FC = () => {
   const feedContainerRef = useRef<HTMLDivElement>(null);
   const isProgrammaticScroll = useRef(false);
 
+  // Set page title: "Nome do Cliente - Witrin"
+  useEffect(() => {
+    if (business?.name) {
+      document.title = `${business.name} - Witrin`;
+    }
+    return () => { document.title = 'Witrin'; };
+  }, [business?.name]);
+
   useEffect(() => {
     const container = feedContainerRef.current;
     if (!container || activeTab !== 'feed') return;
