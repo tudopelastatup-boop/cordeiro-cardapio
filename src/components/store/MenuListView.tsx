@@ -114,7 +114,7 @@ export const MenuListView: React.FC<MenuListViewProps> = ({ items, categories, b
           </div>
         )}
 
-        <div ref={gridRef} className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4 lg:gap-5">
+        <div ref={gridRef} className="grid grid-cols-3 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4 lg:gap-5">
           {filteredItems.map((item) => {
             const isVisible = visibleIds.has(item.id);
             return (
