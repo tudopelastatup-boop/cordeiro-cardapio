@@ -105,8 +105,9 @@ export const StorePage: React.FC = () => {
     <div className="relative w-full h-full bg-black text-white overflow-hidden">
       {activeTab !== 'info' && <TopHeader businessName={business.name} />}
 
-      {/* All tabs stay mounted so scroll position is preserved */}
-      <div className={`w-full h-full ${activeTab === 'list' ? '' : 'hidden'}`}>
+      {/* All tabs stay mounted — use invisible+absolute to preserve scroll position.
+           display:none resets scroll, so we keep inactive tabs in the DOM but off-screen. */}
+      <div className={`w-full h-full ${activeTab === 'list' ? 'relative z-10' : 'absolute inset-0 invisible'}`}>
         <MenuListView
           items={menuItems}
           categories={categories}
@@ -115,11 +116,11 @@ export const StorePage: React.FC = () => {
         />
       </div>
 
-      <div className={`w-full h-full ${activeTab === 'info' ? '' : 'hidden'}`}>
+      <div className={`w-full h-full ${activeTab === 'info' ? 'relative z-10' : 'absolute inset-0 invisible'}`}>
         <RestaurantProfile business={business} />
       </div>
 
-      <div className={`w-full h-full ${activeTab === 'feed' ? '' : 'hidden'}`}>
+      <div className={`w-full h-full ${activeTab === 'feed' ? 'relative z-10' : 'absolute inset-0 invisible'}`}>
         <div className="w-full h-dvh bg-black flex items-center justify-center">
           <main
             ref={feedContainerRef}
