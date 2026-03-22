@@ -28,6 +28,7 @@ export const StorePage: React.FC = () => {
     return () => { document.title = 'Witrin'; };
   }, [business?.name]);
 
+  // Feed: detect which item is most visible via IntersectionObserver
   useEffect(() => {
     const container = feedContainerRef.current;
     if (!container || activeTab !== 'feed') return;
@@ -54,12 +55,20 @@ export const StorePage: React.FC = () => {
     return () => observer.disconnect();
   }, [activeTab]);
 
+  // Feed: jump instantly to the selected item (no smooth scroll)
   useEffect(() => {
     if (activeTab === 'feed' && feedContainerRef.current) {
       isProgrammaticScroll.current = true;
       const targetElement = feedContainerRef.current.children[activeIndex];
-      if (targetElement) targetElement.scrollIntoView({ behavior: 'auto' });
-      setTimeout(() => { isProgrammaticScroll.current = false; }, 500);
+      if (targetElement) {
+        targetElement.scrollIntoView({ behavior: 'instant' });
+      }
+      // Use requestAnimationFrame to re-enable observer after layout settles
+      requestAnimationFrame(() => {
+        requestAnimationFrame(() => {
+          isProgrammaticScroll.current = false;
+        });
+      });
     }
   }, [activeTab]);
 
@@ -74,7 +83,7 @@ export const StorePage: React.FC = () => {
 
   if (isLoading) {
     return (
-      <div className="w-full h-[100dvh] bg-black flex items-center justify-center">
+      <div className="w-full h-dvh bg-black flex items-center justify-center">
         <LoadingSpinner />
       </div>
     );
@@ -90,59 +99,54 @@ export const StorePage: React.FC = () => {
     );
   }
 
-  const renderContent = () => {
-    switch (activeTab) {
-      case 'list':
-        return (
-          <MenuListView
-            items={menuItems}
-            categories={categories}
-            business={business}
-            onItemClick={handleItemClick}
-          />
-        );
-      case 'info':
-        return <RestaurantProfile business={business} />;
-      case 'feed':
-        // Only render items within a window of 2 around the active index
-        // This keeps ~5 items in DOM max (active + 2 before + 2 after)
-        const windowSize = 2;
-        return (
-          <div className="w-full h-dvh bg-black flex items-center justify-center">
-            <main
-              ref={feedContainerRef}
-              className="w-full h-full md:h-dvh md:max-h-dvh md:aspect-9/16 md:max-w-[calc(100dvh*9/16)] overflow-y-scroll snap-y snap-mandatory no-scrollbar scroll-smooth bg-black md:rounded-2xl md:border md:border-white/10"
-            >
-              {menuItems.map((item, index) => {
-                const isNearby = Math.abs(index - activeIndex) <= windowSize;
-                return (
-                  <div key={item.id} data-index={index} className="w-full h-full snap-center">
-                    {isNearby ? (
-                      <FeedItem
-                        item={item}
-                        isActive={index === activeIndex}
-                        categoryName={getCategoryName(item.categoryId)}
-                        onFullscreen={() => setFullscreenItem(item)}
-                      />
-                    ) : (
-                      <div className="w-full h-full bg-black" />
-                    )}
-                  </div>
-                );
-              })}
-              <div className="h-1 w-full snap-start" />
-            </main>
-          </div>
-        );
-      default:
-        return null;
-    }
-  };
+  const windowSize = 2;
 
   return (
     <div className="relative w-full h-full bg-black text-white overflow-hidden">
       {activeTab !== 'info' && <TopHeader businessName={business.name} />}
-      <div className="w-full h-full">{renderContent()}</div>
+
+      {/* All tabs stay mounted so scroll position is preserved */}
+      <div className={`w-full h-full ${activeTab === 'list' ? '' : 'hidden'}`}>
+        <MenuListView
+          items={menuItems}
+          categories={categories}
+          business={business}
+          onItemClick={handleItemClick}
+        />
+      </div>
+
+      <div className={`w-full h-full ${activeTab === 'info' ? '' : 'hidden'}`}>
+        <RestaurantProfile business={business} />
+      </div>
+
+      <div className={`w-full h-full ${activeTab === 'feed' ? '' : 'hidden'}`}>
+        <div className="w-full h-dvh bg-black flex items-center justify-center">
+          <main
+            ref={feedContainerRef}
+            className="w-full h-full md:h-dvh md:max-h-dvh md:aspect-9/16 md:max-w-[calc(100dvh*9/16)] overflow-y-scroll snap-y snap-mandatory no-scrollbar bg-black md:rounded-2xl md:border md:border-white/10"
+          >
+            {menuItems.map((item, index) => {
+              const isNearby = Math.abs(index - activeIndex) <= windowSize;
+              return (
+                <div key={item.id} data-index={index} className="w-full h-full snap-center">
+                  {isNearby ? (
+                    <FeedItem
+                      item={item}
+                      isActive={index === activeIndex}
+                      categoryName={getCategoryName(item.categoryId)}
+                      onFullscreen={() => setFullscreenItem(item)}
+                    />
+                  ) : (
+                    <div className="w-full h-full bg-black" />
+                  )}
+                </div>
+              );
+            })}
+            <div className="h-1 w-full snap-start" />
+          </main>
+        </div>
+      </div>
+
       <BottomNav activeTab={activeTab} setActiveTab={setActiveTab} />
 
       {/* Fullscreen video modal - portal to body so nothing blocks it */}
@@ -167,11 +171,8 @@ const VideoFullscreenModal: React.FC<{
   const formattedPrice = `${item.currency} ${item.price.toFixed(2)}`;
 
   useEffect(() => {
-    // Lock body scroll
     document.body.style.overflow = 'hidden';
-    // Play video
     videoRef.current?.play().catch(() => {});
-    // Close on Escape
     const handleKey = (e: KeyboardEvent) => {
       if (e.key === 'Escape') onClose();
     };
@@ -187,7 +188,6 @@ const VideoFullscreenModal: React.FC<{
       className="fixed inset-0 z-50 bg-black flex items-center justify-center"
       onClick={onClose}
     >
-      {/* Video */}
       <video
         ref={videoRef}
         src={item.videoUrl}
@@ -199,7 +199,6 @@ const VideoFullscreenModal: React.FC<{
         onClick={(e) => e.stopPropagation()}
       />
 
-      {/* Close button */}
       <button
         onClick={onClose}
         className="absolute top-4 right-4 z-10 w-11 h-11 bg-black/50 backdrop-blur-sm rounded-full flex items-center justify-center text-white hover:bg-black/70 transition-colors"
@@ -207,7 +206,6 @@ const VideoFullscreenModal: React.FC<{
         <span className="material-icons-round">close</span>
       </button>
 
-      {/* Item info at bottom */}
       <div
         className="absolute bottom-0 left-0 right-0 p-6 bg-linear-to-t from-black/80 via-black/40 to-transparent pointer-events-none"
       >

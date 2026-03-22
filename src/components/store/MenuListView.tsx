@@ -16,7 +16,6 @@ export const MenuListView: React.FC<MenuListViewProps> = ({ items, categories, b
     return categories.find(c => c.id === categoryId)?.name || '';
   };
 
-  // Categories that actually have items
   const activeCategories = categories.filter(cat =>
     items.some(item => item.categoryId === cat.id)
   );
@@ -25,9 +24,9 @@ export const MenuListView: React.FC<MenuListViewProps> = ({ items, categories, b
     ? items.filter(item => item.categoryId === selectedCategory)
     : items;
 
-  // Observe which rows are visible — only load videos for visible rows
-  // Each row = 3 items on mobile. We track by row index.
-  const [visibleRows, setVisibleRows] = useState<Set<number>>(new Set());
+  // Progressive row loading: only 1 row of videos loads at a time
+  // as user scrolls, new rows activate and old ones go back to thumbnails
+  const [activeRow, setActiveRow] = useState<number>(0);
 
   useEffect(() => {
     const grid = gridRef.current;
@@ -35,21 +34,23 @@ export const MenuListView: React.FC<MenuListViewProps> = ({ items, categories, b
 
     const observer = new IntersectionObserver(
       (entries) => {
-        setVisibleRows(prev => {
-          const next = new Set(prev);
-          for (const entry of entries) {
+        // Find the most visible row
+        let bestRow = -1;
+        let bestRatio = 0;
+        for (const entry of entries) {
+          if (entry.isIntersecting && entry.intersectionRatio > bestRatio) {
             const row = Number(entry.target.getAttribute('data-row'));
-            if (isNaN(row)) continue;
-            if (entry.isIntersecting) {
-              next.add(row);
-            } else {
-              next.delete(row);
+            if (!isNaN(row)) {
+              bestRow = row;
+              bestRatio = entry.intersectionRatio;
             }
           }
-          return next;
-        });
+        }
+        if (bestRow >= 0) {
+          setActiveRow(bestRow);
+        }
       },
-      { rootMargin: '100px 0px', threshold: 0.01 }
+      { threshold: [0.3, 0.6, 1.0] }
     );
 
     const cards = grid.querySelectorAll('[data-row]');
@@ -61,7 +62,6 @@ export const MenuListView: React.FC<MenuListViewProps> = ({ items, categories, b
     if (el) el.play().catch(() => {});
   }, []);
 
-  // Get the original index in unfiltered items array for navigation to feed
   const getOriginalIndex = (item: MenuItem) => {
     return items.findIndex(i => i.id === item.id);
   };
@@ -119,60 +119,62 @@ export const MenuListView: React.FC<MenuListViewProps> = ({ items, categories, b
         <div ref={gridRef} className="grid grid-cols-3 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4 lg:gap-5">
           {filteredItems.map((item, index) => {
             const row = Math.floor(index / 3);
-            const shouldPlayVideo = item.videoUrl && visibleRows.has(row);
+            // Only the active row plays videos — all others show thumbnail
+            const shouldPlayVideo = item.videoUrl && row === activeRow;
             return (
-            <button
-              key={item.id}
-              data-row={row}
-              onClick={() => onItemClick(getOriginalIndex(item))}
-              className="group relative w-full aspect-3/4 rounded-2xl overflow-hidden bg-neutral-900 border border-white/5 active:scale-95 hover:scale-[1.02] hover:border-white/15 transition-all duration-200 text-left focus:outline-none cursor-pointer"
-            >
-              <div className="absolute inset-0">
-                {shouldPlayVideo ? (
-                  <video
-                    ref={videoRefCallback}
-                    src={item.videoUrl}
-                    muted
-                    loop
-                    playsInline
-                    autoPlay
-                    className="w-full h-full object-cover"
-                  />
-                ) : (
-                  <img
-                    src={item.image}
-                    alt={item.title}
-                    className="w-full h-full object-cover"
-                  />
-                )}
-                <div className="absolute inset-0 bg-linear-to-t from-black/90 via-black/20 to-transparent" />
-              </div>
-
-              <div className="absolute bottom-0 left-0 right-0 p-3 lg:p-4 flex flex-col justify-end h-full">
-                <span className="text-[10px] lg:text-[11px] text-brand-accent uppercase tracking-wider font-bold mb-1">
-                  {getCategoryName(item.categoryId)}
-                </span>
-                <h3 className="text-white font-serif text-sm lg:text-base font-medium leading-tight mb-1 line-clamp-2">
-                  {item.title}
-                </h3>
-                <div className="flex justify-between items-center mt-1">
-                  {item.variants && item.variants.length > 0 ? (
-                    <span className="text-white/90 text-xs font-light">
-                      a partir de {item.currency} {Math.min(item.price, ...item.variants.map(v => v.price)).toFixed(0)}
-                    </span>
+              <button
+                key={item.id}
+                data-row={row}
+                onClick={() => onItemClick(getOriginalIndex(item))}
+                className="group relative w-full aspect-3/4 rounded-2xl overflow-hidden bg-neutral-900 border border-white/5 active:scale-95 hover:scale-[1.02] hover:border-white/15 transition-all duration-200 text-left focus:outline-none cursor-pointer"
+              >
+                <div className="absolute inset-0">
+                  {shouldPlayVideo ? (
+                    <video
+                      ref={videoRefCallback}
+                      src={item.videoUrl}
+                      muted
+                      loop
+                      playsInline
+                      autoPlay
+                      className="w-full h-full object-cover"
+                    />
                   ) : (
-                    <span className="text-white/90 text-sm font-light">
-                      {item.currency} {item.price.toFixed(0)}
-                    </span>
+                    <img
+                      src={item.image}
+                      alt={item.title}
+                      className="w-full h-full object-cover"
+                      loading="lazy"
+                    />
                   )}
-                  {item.isSignature && (
-                    <span className="material-icons-round text-brand-primary text-[10px]" title="Signature">
-                      verified
-                    </span>
-                  )}
+                  <div className="absolute inset-0 bg-linear-to-t from-black/90 via-black/20 to-transparent" />
                 </div>
-              </div>
-            </button>
+
+                <div className="absolute bottom-0 left-0 right-0 p-3 lg:p-4 flex flex-col justify-end h-full">
+                  <span className="text-[10px] lg:text-[11px] text-brand-accent uppercase tracking-wider font-bold mb-1">
+                    {getCategoryName(item.categoryId)}
+                  </span>
+                  <h3 className="text-white font-serif text-sm lg:text-base font-medium leading-tight mb-1 line-clamp-2">
+                    {item.title}
+                  </h3>
+                  <div className="flex justify-between items-center mt-1">
+                    {item.variants && item.variants.length > 0 ? (
+                      <span className="text-white/90 text-xs font-light">
+                        a partir de {item.currency} {Math.min(item.price, ...item.variants.map(v => v.price)).toFixed(0)}
+                      </span>
+                    ) : (
+                      <span className="text-white/90 text-sm font-light">
+                        {item.currency} {item.price.toFixed(0)}
+                      </span>
+                    )}
+                    {item.isSignature && (
+                      <span className="material-icons-round text-brand-primary text-[10px]" title="Signature">
+                        verified
+                      </span>
+                    )}
+                  </div>
+                </div>
+              </button>
             );
           })}
         </div>
