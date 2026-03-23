@@ -28,10 +28,10 @@ export const MenuListView: React.FC<MenuListViewProps> = ({ items, categories, b
 
   const totalRows = Math.ceil(filteredItems.length / 3);
 
-  // Active row: determined by scroll position of the container
+  // Active row: determined by which row's first card is closest to the
+  // visible center of the scroll container (between header and bottom nav)
   const [activeRow, setActiveRow] = useState<number>(0);
 
-  // Calculate active row from scroll position — more tolerant than IntersectionObserver
   const handleScroll = useCallback(() => {
     const container = scrollContainerRef.current;
     const grid = gridRef.current;
@@ -42,27 +42,30 @@ export const MenuListView: React.FC<MenuListViewProps> = ({ items, categories, b
       savedScrollTop.current = container.scrollTop;
     }
 
-    // Find which row is in the center of the viewport
+    // The visible area center — account for pt-20 (80px top) and pb-32 (128px bottom nav)
     const containerRect = container.getBoundingClientRect();
-    const centerY = containerRect.top + containerRect.height / 2;
+    const visibleTop = containerRect.top + 80;
+    const visibleBottom = containerRect.bottom - 128;
+    const centerY = (visibleTop + visibleBottom) / 2;
 
-    // Get the first card of each row and find which one is closest to center
-    let closestRow = 0;
-    let closestDist = Infinity;
+    // Check each row's first card — whichever overlaps the center most wins
+    let bestRow = 0;
+    let bestDist = Infinity;
 
-    const cards = grid.querySelectorAll('[data-row-first]');
-    cards.forEach((card) => {
+    const firstCards = grid.querySelectorAll('[data-row-first]');
+    firstCards.forEach((card) => {
       const rect = card.getBoundingClientRect();
-      const cardCenterY = rect.top + rect.height / 2;
-      const dist = Math.abs(cardCenterY - centerY);
+      // Distance from card center to visible center
+      const cardCenter = rect.top + rect.height / 2;
+      const dist = Math.abs(cardCenter - centerY);
       const row = Number(card.getAttribute('data-row'));
-      if (dist < closestDist) {
-        closestDist = dist;
-        closestRow = row;
+      if (!isNaN(row) && dist < bestDist) {
+        bestDist = dist;
+        bestRow = row;
       }
     });
 
-    setActiveRow(closestRow);
+    setActiveRow(bestRow);
   }, [savedScrollTop]);
 
   // Restore scroll position on mount
@@ -72,14 +75,26 @@ export const MenuListView: React.FC<MenuListViewProps> = ({ items, categories, b
     }
   }, []);
 
-  // Attach scroll listener
+  // Attach scroll listener with throttle for performance
   useEffect(() => {
     const container = scrollContainerRef.current;
     if (!container) return;
-    container.addEventListener('scroll', handleScroll, { passive: true });
+
+    let ticking = false;
+    const throttledScroll = () => {
+      if (!ticking) {
+        ticking = true;
+        requestAnimationFrame(() => {
+          handleScroll();
+          ticking = false;
+        });
+      }
+    };
+
+    container.addEventListener('scroll', throttledScroll, { passive: true });
     // Initial calculation
     handleScroll();
-    return () => container.removeEventListener('scroll', handleScroll);
+    return () => container.removeEventListener('scroll', throttledScroll);
   }, [handleScroll]);
 
   const videoRefCallback = useCallback((el: HTMLVideoElement | null) => {
@@ -141,21 +156,37 @@ export const MenuListView: React.FC<MenuListViewProps> = ({ items, categories, b
         )}
 
         <div className="relative">
-          {/* Row indicator dots — right side */}
-          {totalRows > 1 && (
-            <div className="fixed right-1.5 top-1/2 -translate-y-1/2 z-30 flex flex-col gap-1.5 items-center">
-              {Array.from({ length: totalRows }, (_, i) => (
-                <div
-                  key={i}
-                  className={`rounded-full transition-all duration-300 ${
-                    i === activeRow
-                      ? 'w-1.5 h-4 bg-white'
-                      : 'w-1 h-1 bg-white/30'
-                  }`}
-                />
-              ))}
-            </div>
-          )}
+          {/* Row indicator dots — right side, shows window around active */}
+          {totalRows > 1 && (() => {
+            const maxDots = 7;
+            const half = Math.floor(maxDots / 2);
+            let start = Math.max(0, activeRow - half);
+            let end = Math.min(totalRows, start + maxDots);
+            if (end - start < maxDots) start = Math.max(0, end - maxDots);
+
+            return (
+              <div className="fixed right-1.5 top-1/2 -translate-y-1/2 z-30 flex flex-col gap-1 items-center">
+                {start > 0 && <div className="w-0.5 h-0.5 rounded-full bg-white/20" />}
+                {Array.from({ length: end - start }, (_, i) => {
+                  const row = start + i;
+                  const distFromActive = Math.abs(row - activeRow);
+                  return (
+                    <div
+                      key={row}
+                      className={`rounded-full transition-all duration-300 ${
+                        row === activeRow
+                          ? 'w-1.5 h-3.5 bg-white'
+                          : distFromActive === 1
+                            ? 'w-1 h-1 bg-white/40'
+                            : 'w-1 h-1 bg-white/20'
+                      }`}
+                    />
+                  );
+                })}
+                {end < totalRows && <div className="w-0.5 h-0.5 rounded-full bg-white/20" />}
+              </div>
+            );
+          })()}
 
           <div ref={gridRef} className="grid grid-cols-3 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4 lg:gap-5">
             {filteredItems.map((item, index) => {
