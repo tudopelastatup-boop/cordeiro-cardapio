@@ -29,6 +29,7 @@ export const MenuListView: React.FC<MenuListViewProps> = ({ items, categories, b
   const totalRows = Math.ceil(filteredItems.length / 3);
 
   const [activeRow, setActiveRow] = useState<number>(0);
+  const [debugInfo, setDebugInfo] = useState('');
 
   // Store ref for first card of each row
   const setRowRef = useCallback((row: number, el: HTMLElement | null) => {
@@ -68,6 +69,7 @@ export const MenuListView: React.FC<MenuListViewProps> = ({ items, categories, b
     });
 
     setActiveRow(best);
+    setDebugInfo(`rows:${rowRefs.current.size} active:${best} trigger:${Math.round(triggerY)} scroll:${Math.round(container.scrollTop)}`);
   }, [savedScrollTop]);
 
   // Restore scroll on mount
@@ -114,6 +116,10 @@ export const MenuListView: React.FC<MenuListViewProps> = ({ items, categories, b
 
   return (
     <div ref={scrollContainerRef} className="w-full h-full pt-20 pb-32 px-4 lg:px-8 overflow-y-auto no-scrollbar bg-black">
+      {/* DEBUG — remover depois */}
+      <div className="fixed top-2 left-2 z-50 bg-red-600 text-white text-[10px] px-2 py-1 rounded font-mono">
+        {debugInfo}
+      </div>
       <div className="max-w-6xl mx-auto">
         {/* Logo */}
         <div className="flex flex-col items-center mb-6">
