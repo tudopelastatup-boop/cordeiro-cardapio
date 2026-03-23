@@ -6,10 +6,10 @@ interface MenuListViewProps {
   categories: Category[];
   business: Business;
   onItemClick: (index: number) => void;
-  savedScrollTop?: React.MutableRefObject<number>;
+  savedRow?: React.MutableRefObject<number>;
 }
 
-export const MenuListView: React.FC<MenuListViewProps> = ({ items, categories, business, onItemClick, savedScrollTop }) => {
+export const MenuListView: React.FC<MenuListViewProps> = ({ items, categories, business, onItemClick, savedRow }) => {
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   const rowRefs = useRef<Map<number, HTMLElement>>(new Map());
@@ -28,7 +28,7 @@ export const MenuListView: React.FC<MenuListViewProps> = ({ items, categories, b
 
   const totalRows = Math.ceil(filteredItems.length / 3);
 
-  const [activeRow, setActiveRow] = useState<number>(0);
+  const [activeRow, setActiveRow] = useState<number>(savedRow?.current ?? 0);
 
   // Store ref for first card of each row
   const setRowRef = useCallback((row: number, el: HTMLElement | null) => {
@@ -39,26 +39,16 @@ export const MenuListView: React.FC<MenuListViewProps> = ({ items, categories, b
     }
   }, []);
 
-  // Determine active row: which row's first card is closest to the
-  // trigger line. Uses window.innerHeight since the scroll container
-  // might not be the element we think — getBoundingClientRect is
-  // viewport-relative so it works regardless of which element scrolls.
+  // Determine active row: which row's first card is closest to the trigger line
   const computeActiveRow = useCallback(() => {
     const container = scrollContainerRef.current;
     if (!container) return;
 
-    if (savedScrollTop) {
-      savedScrollTop.current = container.scrollTop;
-    }
-
-    // Trigger line: 40% down the screen, but move it DOWN proportionally
-    // as user scrolls further, so the last rows can still be reached.
-    // When scroll is at top, trigger is at 40%. At bottom, it's at 70%.
     const scrollEl = container.scrollHeight > container.clientHeight ? container : document.documentElement;
     const scrollRatio = scrollEl.scrollHeight > scrollEl.clientHeight
       ? scrollEl.scrollTop / (scrollEl.scrollHeight - scrollEl.clientHeight)
       : 0;
-    const triggerPercent = 0.4 + scrollRatio * 0.3; // 40% → 70%
+    const triggerPercent = 0.4 + scrollRatio * 0.3;
     const triggerY = window.innerHeight * triggerPercent;
 
     let best = 0;
@@ -75,12 +65,18 @@ export const MenuListView: React.FC<MenuListViewProps> = ({ items, categories, b
     });
 
     setActiveRow(best);
-  }, [savedScrollTop]);
+    if (savedRow) savedRow.current = best;
+  }, [savedRow]);
 
-  // Restore scroll on mount
+  // On mount: scroll the saved row's card into view
   useEffect(() => {
-    if (savedScrollTop && scrollContainerRef.current && savedScrollTop.current > 0) {
-      scrollContainerRef.current.scrollTop = savedScrollTop.current;
+    if (savedRow && savedRow.current > 0) {
+      requestAnimationFrame(() => {
+        const el = rowRefs.current.get(savedRow.current);
+        if (el) {
+          el.scrollIntoView({ behavior: 'instant', block: 'center' });
+        }
+      });
     }
     // Compute initial row after restore
     requestAnimationFrame(() => computeActiveRow());

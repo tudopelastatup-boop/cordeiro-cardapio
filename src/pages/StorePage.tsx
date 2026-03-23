@@ -20,8 +20,8 @@ export const StorePage: React.FC = () => {
   const feedContainerRef = useRef<HTMLDivElement>(null);
   const isProgrammaticScroll = useRef(false);
 
-  // Persistent scroll positions — survive tab switches since refs don't reset
-  const listScrollTop = useRef(0);
+  // Persistent positions — survive tab switches since refs don't reset
+  const listSavedRow = useRef(0);
   const infoScrollTop = useRef(0);
 
   // Set page title: "Nome do Cliente - Witrin"
@@ -117,7 +117,7 @@ export const StorePage: React.FC = () => {
             categories={categories}
             business={business}
             onItemClick={handleItemClick}
-            savedScrollTop={listScrollTop}
+            savedRow={listSavedRow}
           />
         );
       case 'info':
