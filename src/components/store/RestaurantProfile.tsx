@@ -1,16 +1,39 @@
-import React from 'react';
+import React, { useRef, useEffect, useCallback } from 'react';
 import { Business } from '../../types';
 
 interface RestaurantProfileProps {
   business: Business;
+  savedScrollTop?: React.MutableRefObject<number>;
 }
 
-export const RestaurantProfile: React.FC<RestaurantProfileProps> = ({ business }) => {
+export const RestaurantProfile: React.FC<RestaurantProfileProps> = ({ business, savedScrollTop }) => {
   // Sanitize WhatsApp number - remove everything except digits
   const sanitizedWhatsapp = business.whatsapp?.replace(/\D/g, '') || '';
+  const scrollRef = useRef<HTMLDivElement>(null);
+
+  // Restore scroll on mount
+  useEffect(() => {
+    if (savedScrollTop && scrollRef.current && savedScrollTop.current > 0) {
+      scrollRef.current.scrollTop = savedScrollTop.current;
+    }
+  }, []);
+
+  // Save scroll on scroll
+  const handleScroll = useCallback(() => {
+    if (savedScrollTop && scrollRef.current) {
+      savedScrollTop.current = scrollRef.current.scrollTop;
+    }
+  }, [savedScrollTop]);
+
+  useEffect(() => {
+    const el = scrollRef.current;
+    if (!el) return;
+    el.addEventListener('scroll', handleScroll, { passive: true });
+    return () => el.removeEventListener('scroll', handleScroll);
+  }, [handleScroll]);
 
   return (
-    <div className="w-full h-full overflow-y-auto no-scrollbar bg-black pb-32">
+    <div ref={scrollRef} className="w-full h-full overflow-y-auto no-scrollbar bg-black pb-32">
       {/* Cover - object-contain para nunca cortar a imagem */}
       <div className="relative h-64 md:h-80 w-full bg-black">
         {business.coverImageUrl ? (

@@ -20,9 +20,9 @@ export const StorePage: React.FC = () => {
   const feedContainerRef = useRef<HTMLDivElement>(null);
   const isProgrammaticScroll = useRef(false);
 
-  // Save scroll positions per tab so we can restore when switching back
-  const scrollPositions = useRef<Record<string, number>>({ list: 0, feed: 0, info: 0 });
-  const prevTab = useRef<Tab>(activeTab);
+  // Persistent scroll positions — survive tab switches since refs don't reset
+  const listScrollTop = useRef(0);
+  const infoScrollTop = useRef(0);
 
   // Set page title: "Nome do Cliente - Witrin"
   useEffect(() => {
@@ -31,33 +31,6 @@ export const StorePage: React.FC = () => {
     }
     return () => { document.title = 'Witrin'; };
   }, [business?.name]);
-
-  // Save scroll of outgoing tab, restore scroll of incoming tab
-  useEffect(() => {
-    // Save the scroll position of the tab we're leaving
-    const leaving = prevTab.current;
-    if (leaving === 'list' || leaving === 'info') {
-      // MenuListView and RestaurantProfile scroll inside their own container
-      const container = document.querySelector(`[data-tab="${leaving}"]`);
-      if (container) {
-        const scrollable = container.querySelector('.overflow-y-auto, .overflow-y-scroll') || container;
-        scrollPositions.current[leaving] = (scrollable as HTMLElement).scrollTop;
-      }
-    }
-
-    prevTab.current = activeTab;
-
-    // Restore scroll position of the tab we're entering
-    requestAnimationFrame(() => {
-      if (activeTab === 'list' || activeTab === 'info') {
-        const container = document.querySelector(`[data-tab="${activeTab}"]`);
-        if (container) {
-          const scrollable = container.querySelector('.overflow-y-auto, .overflow-y-scroll') || container;
-          (scrollable as HTMLElement).scrollTop = scrollPositions.current[activeTab];
-        }
-      }
-    });
-  }, [activeTab]);
 
   // Feed: detect which item is most visible via IntersectionObserver
   useEffect(() => {
@@ -139,21 +112,16 @@ export const StorePage: React.FC = () => {
     switch (activeTab) {
       case 'list':
         return (
-          <div data-tab="list" className="w-full h-full">
-            <MenuListView
-              items={menuItems}
-              categories={categories}
-              business={business}
-              onItemClick={handleItemClick}
-            />
-          </div>
+          <MenuListView
+            items={menuItems}
+            categories={categories}
+            business={business}
+            onItemClick={handleItemClick}
+            savedScrollTop={listScrollTop}
+          />
         );
       case 'info':
-        return (
-          <div data-tab="info" className="w-full h-full">
-            <RestaurantProfile business={business} />
-          </div>
-        );
+        return <RestaurantProfile business={business} savedScrollTop={infoScrollTop} />;
       case 'feed':
         return (
           <div className="w-full h-dvh bg-black flex items-center justify-center">

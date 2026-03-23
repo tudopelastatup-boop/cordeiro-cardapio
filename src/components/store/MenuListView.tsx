@@ -6,10 +6,12 @@ interface MenuListViewProps {
   categories: Category[];
   business: Business;
   onItemClick: (index: number) => void;
+  savedScrollTop?: React.MutableRefObject<number>;
 }
 
-export const MenuListView: React.FC<MenuListViewProps> = ({ items, categories, business, onItemClick }) => {
+export const MenuListView: React.FC<MenuListViewProps> = ({ items, categories, business, onItemClick, savedScrollTop }) => {
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
+  const scrollContainerRef = useRef<HTMLDivElement>(null);
   const gridRef = useRef<HTMLDivElement>(null);
 
   const getCategoryName = (categoryId: string) => {
@@ -24,39 +26,61 @@ export const MenuListView: React.FC<MenuListViewProps> = ({ items, categories, b
     ? items.filter(item => item.categoryId === selectedCategory)
     : items;
 
-  // Progressive row loading: only 1 row of videos loads at a time
-  // as user scrolls, new rows activate and old ones go back to thumbnails
+  const totalRows = Math.ceil(filteredItems.length / 3);
+
+  // Active row: determined by scroll position of the container
   const [activeRow, setActiveRow] = useState<number>(0);
 
-  useEffect(() => {
+  // Calculate active row from scroll position — more tolerant than IntersectionObserver
+  const handleScroll = useCallback(() => {
+    const container = scrollContainerRef.current;
     const grid = gridRef.current;
-    if (!grid) return;
+    if (!container || !grid) return;
 
-    const observer = new IntersectionObserver(
-      (entries) => {
-        // Find the most visible row
-        let bestRow = -1;
-        let bestRatio = 0;
-        for (const entry of entries) {
-          if (entry.isIntersecting && entry.intersectionRatio > bestRatio) {
-            const row = Number(entry.target.getAttribute('data-row'));
-            if (!isNaN(row)) {
-              bestRow = row;
-              bestRatio = entry.intersectionRatio;
-            }
-          }
-        }
-        if (bestRow >= 0) {
-          setActiveRow(bestRow);
-        }
-      },
-      { threshold: [0.3, 0.6, 1.0] }
-    );
+    // Save scroll position for restore
+    if (savedScrollTop) {
+      savedScrollTop.current = container.scrollTop;
+    }
 
-    const cards = grid.querySelectorAll('[data-row]');
-    cards.forEach(card => observer.observe(card));
-    return () => observer.disconnect();
-  }, [selectedCategory, filteredItems.length]);
+    // Find which row is in the center of the viewport
+    const containerRect = container.getBoundingClientRect();
+    const centerY = containerRect.top + containerRect.height / 2;
+
+    // Get the first card of each row and find which one is closest to center
+    let closestRow = 0;
+    let closestDist = Infinity;
+
+    const cards = grid.querySelectorAll('[data-row-first]');
+    cards.forEach((card) => {
+      const rect = card.getBoundingClientRect();
+      const cardCenterY = rect.top + rect.height / 2;
+      const dist = Math.abs(cardCenterY - centerY);
+      const row = Number(card.getAttribute('data-row'));
+      if (dist < closestDist) {
+        closestDist = dist;
+        closestRow = row;
+      }
+    });
+
+    setActiveRow(closestRow);
+  }, [savedScrollTop]);
+
+  // Restore scroll position on mount
+  useEffect(() => {
+    if (savedScrollTop && scrollContainerRef.current && savedScrollTop.current > 0) {
+      scrollContainerRef.current.scrollTop = savedScrollTop.current;
+    }
+  }, []);
+
+  // Attach scroll listener
+  useEffect(() => {
+    const container = scrollContainerRef.current;
+    if (!container) return;
+    container.addEventListener('scroll', handleScroll, { passive: true });
+    // Initial calculation
+    handleScroll();
+    return () => container.removeEventListener('scroll', handleScroll);
+  }, [handleScroll]);
 
   const videoRefCallback = useCallback((el: HTMLVideoElement | null) => {
     if (el) el.play().catch(() => {});
@@ -67,7 +91,7 @@ export const MenuListView: React.FC<MenuListViewProps> = ({ items, categories, b
   };
 
   return (
-    <div className="w-full h-full pt-20 pb-32 px-4 lg:px-8 overflow-y-auto no-scrollbar bg-black">
+    <div ref={scrollContainerRef} className="w-full h-full pt-20 pb-32 px-4 lg:px-8 overflow-y-auto no-scrollbar bg-black">
       <div className="max-w-6xl mx-auto">
         {/* Logo do cliente em evidência */}
         <div className="flex flex-col items-center mb-6">
@@ -116,67 +140,90 @@ export const MenuListView: React.FC<MenuListViewProps> = ({ items, categories, b
           </div>
         )}
 
-        <div ref={gridRef} className="grid grid-cols-3 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4 lg:gap-5">
-          {filteredItems.map((item, index) => {
-            const row = Math.floor(index / 3);
-            // Only the active row plays videos — all others show thumbnail
-            const shouldPlayVideo = item.videoUrl && row === activeRow;
-            return (
-              <button
-                key={item.id}
-                data-row={row}
-                onClick={() => onItemClick(getOriginalIndex(item))}
-                className="group relative w-full aspect-3/4 rounded-2xl overflow-hidden bg-neutral-900 border border-white/5 active:scale-95 hover:scale-[1.02] hover:border-white/15 transition-all duration-200 text-left focus:outline-none cursor-pointer"
-              >
-                <div className="absolute inset-0">
-                  {shouldPlayVideo ? (
-                    <video
-                      ref={videoRefCallback}
-                      src={item.videoUrl}
-                      muted
-                      loop
-                      playsInline
-                      autoPlay
-                      className="w-full h-full object-cover"
-                    />
-                  ) : (
-                    <img
-                      src={item.image}
-                      alt={item.title}
-                      className="w-full h-full object-cover"
-                      loading="lazy"
-                    />
-                  )}
-                  <div className="absolute inset-0 bg-linear-to-t from-black/90 via-black/20 to-transparent" />
-                </div>
+        <div className="relative">
+          {/* Row indicator dots — right side */}
+          {totalRows > 1 && (
+            <div className="fixed right-1.5 top-1/2 -translate-y-1/2 z-30 flex flex-col gap-1.5 items-center">
+              {Array.from({ length: totalRows }, (_, i) => (
+                <div
+                  key={i}
+                  className={`rounded-full transition-all duration-300 ${
+                    i === activeRow
+                      ? 'w-1.5 h-4 bg-white'
+                      : 'w-1 h-1 bg-white/30'
+                  }`}
+                />
+              ))}
+            </div>
+          )}
 
-                <div className="absolute bottom-0 left-0 right-0 p-3 lg:p-4 flex flex-col justify-end h-full">
-                  <span className="text-[10px] lg:text-[11px] text-brand-accent uppercase tracking-wider font-bold mb-1">
-                    {getCategoryName(item.categoryId)}
-                  </span>
-                  <h3 className="text-white font-serif text-sm lg:text-base font-medium leading-tight mb-1 line-clamp-2">
-                    {item.title}
-                  </h3>
-                  <div className="flex justify-between items-center mt-1">
-                    {item.variants && item.variants.length > 0 ? (
-                      <span className="text-white/90 text-xs font-light">
-                        a partir de {item.currency} {Math.min(item.price, ...item.variants.map(v => v.price)).toFixed(0)}
-                      </span>
+          <div ref={gridRef} className="grid grid-cols-3 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4 lg:gap-5">
+            {filteredItems.map((item, index) => {
+              const row = Math.floor(index / 3);
+              const isFirstInRow = index % 3 === 0;
+              const shouldPlayVideo = item.videoUrl && row === activeRow;
+              return (
+                <button
+                  key={item.id}
+                  data-row={row}
+                  {...(isFirstInRow ? { 'data-row-first': '' } : {})}
+                  onClick={() => onItemClick(getOriginalIndex(item))}
+                  className={`group relative w-full aspect-3/4 rounded-2xl overflow-hidden bg-neutral-900 border active:scale-95 hover:scale-[1.02] transition-all duration-200 text-left focus:outline-none cursor-pointer ${
+                    row === activeRow
+                      ? 'border-white/20 ring-1 ring-white/10'
+                      : 'border-white/5 hover:border-white/15'
+                  }`}
+                >
+                  <div className="absolute inset-0">
+                    {shouldPlayVideo ? (
+                      <video
+                        ref={videoRefCallback}
+                        src={item.videoUrl}
+                        muted
+                        loop
+                        playsInline
+                        autoPlay
+                        className="w-full h-full object-cover"
+                      />
                     ) : (
-                      <span className="text-white/90 text-sm font-light">
-                        {item.currency} {item.price.toFixed(0)}
-                      </span>
+                      <img
+                        src={item.image}
+                        alt={item.title}
+                        className="w-full h-full object-cover"
+                        loading="lazy"
+                      />
                     )}
-                    {item.isSignature && (
-                      <span className="material-icons-round text-brand-primary text-[10px]" title="Signature">
-                        verified
-                      </span>
-                    )}
+                    <div className="absolute inset-0 bg-linear-to-t from-black/90 via-black/20 to-transparent" />
                   </div>
-                </div>
-              </button>
-            );
-          })}
+
+                  <div className="absolute bottom-0 left-0 right-0 p-3 lg:p-4 flex flex-col justify-end h-full">
+                    <span className="text-[10px] lg:text-[11px] text-brand-accent uppercase tracking-wider font-bold mb-1">
+                      {getCategoryName(item.categoryId)}
+                    </span>
+                    <h3 className="text-white font-serif text-sm lg:text-base font-medium leading-tight mb-1 line-clamp-2">
+                      {item.title}
+                    </h3>
+                    <div className="flex justify-between items-center mt-1">
+                      {item.variants && item.variants.length > 0 ? (
+                        <span className="text-white/90 text-xs font-light">
+                          a partir de {item.currency} {Math.min(item.price, ...item.variants.map(v => v.price)).toFixed(0)}
+                        </span>
+                      ) : (
+                        <span className="text-white/90 text-sm font-light">
+                          {item.currency} {item.price.toFixed(0)}
+                        </span>
+                      )}
+                      {item.isSignature && (
+                        <span className="material-icons-round text-brand-primary text-[10px]" title="Signature">
+                          verified
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                </button>
+              );
+            })}
+          </div>
         </div>
 
         <div className="mt-12 pb-8 flex items-center justify-center gap-2">
