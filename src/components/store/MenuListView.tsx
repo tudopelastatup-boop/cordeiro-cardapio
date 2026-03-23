@@ -12,7 +12,7 @@ interface MenuListViewProps {
 export const MenuListView: React.FC<MenuListViewProps> = ({ items, categories, business, onItemClick, savedScrollTop }) => {
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
   const scrollContainerRef = useRef<HTMLDivElement>(null);
-  const gridRef = useRef<HTMLDivElement>(null);
+  const rowRefs = useRef<Map<number, HTMLElement>>(new Map());
 
   const getCategoryName = (categoryId: string) => {
     return categories.find(c => c.id === categoryId)?.name || '';
@@ -30,81 +30,86 @@ export const MenuListView: React.FC<MenuListViewProps> = ({ items, categories, b
 
   const [activeRow, setActiveRow] = useState<number>(0);
 
-  // Save scroll position continuously
+  // Store ref for first card of each row
+  const setRowRef = useCallback((row: number, el: HTMLElement | null) => {
+    if (el) {
+      rowRefs.current.set(row, el);
+    } else {
+      rowRefs.current.delete(row);
+    }
+  }, []);
+
+  // Determine active row based on scroll position
+  // Logic: the row whose top edge is closest to (but not far below) a
+  // "trigger line" near the top of the visible area wins.
+  // The trigger line sits 35% down from the container top — this means
+  // as soon as a row scrolls past that point, the NEXT row takes over.
+  const computeActiveRow = useCallback(() => {
+    const container = scrollContainerRef.current;
+    if (!container) return;
+
+    if (savedScrollTop) {
+      savedScrollTop.current = container.scrollTop;
+    }
+
+    const triggerY = container.scrollTop + container.clientHeight * 0.35;
+
+    let best = 0;
+    let bestTop = -Infinity;
+
+    rowRefs.current.forEach((el, row) => {
+      // offsetTop is relative to offsetParent — we need it relative to
+      // the scroll container. Walk up the offset chain.
+      let top = 0;
+      let node: HTMLElement | null = el;
+      while (node && node !== container) {
+        top += node.offsetTop;
+        node = node.offsetParent as HTMLElement | null;
+      }
+
+      // The row whose top is closest to (but <= ) triggerY wins
+      if (top <= triggerY && top > bestTop) {
+        bestTop = top;
+        best = row;
+      }
+    });
+
+    setActiveRow(best);
+  }, [savedScrollTop]);
+
+  // Restore scroll on mount
+  useEffect(() => {
+    if (savedScrollTop && scrollContainerRef.current && savedScrollTop.current > 0) {
+      scrollContainerRef.current.scrollTop = savedScrollTop.current;
+    }
+    // Compute initial row after restore
+    requestAnimationFrame(() => computeActiveRow());
+  }, []);
+
+  // Scroll listener
   useEffect(() => {
     const container = scrollContainerRef.current;
     if (!container) return;
 
+    let ticking = false;
     const onScroll = () => {
-      if (savedScrollTop) {
-        savedScrollTop.current = container.scrollTop;
+      if (!ticking) {
+        ticking = true;
+        requestAnimationFrame(() => {
+          computeActiveRow();
+          ticking = false;
+        });
       }
     };
 
     container.addEventListener('scroll', onScroll, { passive: true });
     return () => container.removeEventListener('scroll', onScroll);
-  }, [savedScrollTop]);
+  }, [computeActiveRow]);
 
-  // Restore scroll position on mount
+  // Recompute when filter changes
   useEffect(() => {
-    if (savedScrollTop && scrollContainerRef.current && savedScrollTop.current > 0) {
-      scrollContainerRef.current.scrollTop = savedScrollTop.current;
-    }
-  }, []);
-
-  // Observe which row is most visible using IntersectionObserver
-  // with the scroll container as root and negative margins to create
-  // a detection band in the center of the screen
-  useEffect(() => {
-    const container = scrollContainerRef.current;
-    const grid = gridRef.current;
-    if (!container || !grid) return;
-
-    // Shrink the detection area to a band in the center ~40% of container height
-    // This means a row needs to reach the middle of the screen to become active
-    const h = container.clientHeight;
-    const margin = Math.floor(h * 0.30);
-
-    const ratios = new Map<number, number>();
-
-    const observer = new IntersectionObserver(
-      (entries) => {
-        for (const entry of entries) {
-          const row = Number(entry.target.getAttribute('data-row'));
-          if (isNaN(row)) continue;
-          if (entry.isIntersecting) {
-            ratios.set(row, entry.intersectionRatio);
-          } else {
-            ratios.delete(row);
-          }
-        }
-
-        // Pick the row with the highest intersection ratio
-        let bestRow = 0;
-        let bestRatio = -1;
-        ratios.forEach((ratio, row) => {
-          if (ratio > bestRatio) {
-            bestRatio = ratio;
-            bestRow = row;
-          }
-        });
-
-        if (bestRatio >= 0) {
-          setActiveRow(bestRow);
-        }
-      },
-      {
-        root: container,
-        rootMargin: `-${margin}px 0px -${margin}px 0px`,
-        threshold: [0, 0.25, 0.5, 0.75, 1.0],
-      }
-    );
-
-    // Only observe the first card of each row
-    const firstCards = grid.querySelectorAll('[data-row-first]');
-    firstCards.forEach(card => observer.observe(card));
-    return () => observer.disconnect();
-  }, [selectedCategory, filteredItems.length]);
+    requestAnimationFrame(() => computeActiveRow());
+  }, [selectedCategory, filteredItems.length, computeActiveRow]);
 
   const videoRefCallback = useCallback((el: HTMLVideoElement | null) => {
     if (el) el.play().catch(() => {});
@@ -117,7 +122,7 @@ export const MenuListView: React.FC<MenuListViewProps> = ({ items, categories, b
   return (
     <div ref={scrollContainerRef} className="w-full h-full pt-20 pb-32 px-4 lg:px-8 overflow-y-auto no-scrollbar bg-black">
       <div className="max-w-6xl mx-auto">
-        {/* Logo do cliente em evidência */}
+        {/* Logo */}
         <div className="flex flex-col items-center mb-6">
           {business.logoUrl ? (
             <img
@@ -165,7 +170,7 @@ export const MenuListView: React.FC<MenuListViewProps> = ({ items, categories, b
         )}
 
         <div className="relative">
-          {/* Row indicator dots — right side, shows window around active */}
+          {/* Row indicator dots */}
           {totalRows > 1 && (() => {
             const maxDots = 7;
             const half = Math.floor(maxDots / 2);
@@ -197,7 +202,7 @@ export const MenuListView: React.FC<MenuListViewProps> = ({ items, categories, b
             );
           })()}
 
-          <div ref={gridRef} className="grid grid-cols-3 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4 lg:gap-5">
+          <div className="grid grid-cols-3 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4 lg:gap-5">
             {filteredItems.map((item, index) => {
               const row = Math.floor(index / 3);
               const isFirstInRow = index % 3 === 0;
@@ -205,8 +210,7 @@ export const MenuListView: React.FC<MenuListViewProps> = ({ items, categories, b
               return (
                 <button
                   key={item.id}
-                  data-row={row}
-                  {...(isFirstInRow ? { 'data-row-first': '' } : {})}
+                  ref={isFirstInRow ? (el) => setRowRef(row, el) : undefined}
                   onClick={() => onItemClick(getOriginalIndex(item))}
                   className={`group relative w-full aspect-3/4 rounded-2xl overflow-hidden bg-neutral-900 border active:scale-95 hover:scale-[1.02] transition-all duration-200 text-left focus:outline-none cursor-pointer ${
                     row === activeRow
