@@ -28,48 +28,22 @@ export const MenuListView: React.FC<MenuListViewProps> = ({ items, categories, b
 
   const totalRows = Math.ceil(filteredItems.length / 3);
 
-  // Active row: calculated from scroll position relative to the grid
   const [activeRow, setActiveRow] = useState<number>(0);
 
-  const handleScroll = useCallback(() => {
+  // Save scroll position continuously
+  useEffect(() => {
     const container = scrollContainerRef.current;
-    const grid = gridRef.current;
-    if (!container || !grid) return;
+    if (!container) return;
 
-    // Save scroll position for restore
-    if (savedScrollTop) {
-      savedScrollTop.current = container.scrollTop;
-    }
+    const onScroll = () => {
+      if (savedScrollTop) {
+        savedScrollTop.current = container.scrollTop;
+      }
+    };
 
-    // How far the grid top is scrolled relative to the container
-    const gridOffsetTop = grid.offsetTop;
-    const scrollTop = container.scrollTop;
-    const containerHeight = container.clientHeight;
-
-    // The "center" of the visible area, relative to the scroll content
-    const viewCenter = scrollTop + containerHeight / 2;
-
-    // Position within the grid
-    const posInGrid = viewCenter - gridOffsetTop;
-
-    if (posInGrid <= 0) {
-      setActiveRow(0);
-      return;
-    }
-
-    // Get actual row height from the first card
-    const firstCard = grid.querySelector('[data-row-first]') as HTMLElement | null;
-    if (!firstCard) return;
-
-    // Row height = card height + gap
-    const gap = parseFloat(getComputedStyle(grid).rowGap) || 16;
-    const rowHeight = firstCard.offsetHeight + gap;
-
-    if (rowHeight <= 0) return;
-
-    const row = Math.floor(posInGrid / rowHeight);
-    setActiveRow(Math.max(0, Math.min(row, totalRows - 1)));
-  }, [savedScrollTop, totalRows]);
+    container.addEventListener('scroll', onScroll, { passive: true });
+    return () => container.removeEventListener('scroll', onScroll);
+  }, [savedScrollTop]);
 
   // Restore scroll position on mount
   useEffect(() => {
@@ -78,27 +52,59 @@ export const MenuListView: React.FC<MenuListViewProps> = ({ items, categories, b
     }
   }, []);
 
-  // Attach scroll listener with throttle for performance
+  // Observe which row is most visible using IntersectionObserver
+  // with the scroll container as root and negative margins to create
+  // a detection band in the center of the screen
   useEffect(() => {
     const container = scrollContainerRef.current;
-    if (!container) return;
+    const grid = gridRef.current;
+    if (!container || !grid) return;
 
-    let ticking = false;
-    const throttledScroll = () => {
-      if (!ticking) {
-        ticking = true;
-        requestAnimationFrame(() => {
-          handleScroll();
-          ticking = false;
+    // Shrink the detection area to a band in the center ~40% of container height
+    // This means a row needs to reach the middle of the screen to become active
+    const h = container.clientHeight;
+    const margin = Math.floor(h * 0.30);
+
+    const ratios = new Map<number, number>();
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        for (const entry of entries) {
+          const row = Number(entry.target.getAttribute('data-row'));
+          if (isNaN(row)) continue;
+          if (entry.isIntersecting) {
+            ratios.set(row, entry.intersectionRatio);
+          } else {
+            ratios.delete(row);
+          }
+        }
+
+        // Pick the row with the highest intersection ratio
+        let bestRow = 0;
+        let bestRatio = -1;
+        ratios.forEach((ratio, row) => {
+          if (ratio > bestRatio) {
+            bestRatio = ratio;
+            bestRow = row;
+          }
         });
-      }
-    };
 
-    container.addEventListener('scroll', throttledScroll, { passive: true });
-    // Initial calculation
-    handleScroll();
-    return () => container.removeEventListener('scroll', throttledScroll);
-  }, [handleScroll]);
+        if (bestRatio >= 0) {
+          setActiveRow(bestRow);
+        }
+      },
+      {
+        root: container,
+        rootMargin: `-${margin}px 0px -${margin}px 0px`,
+        threshold: [0, 0.25, 0.5, 0.75, 1.0],
+      }
+    );
+
+    // Only observe the first card of each row
+    const firstCards = grid.querySelectorAll('[data-row-first]');
+    firstCards.forEach(card => observer.observe(card));
+    return () => observer.disconnect();
+  }, [selectedCategory, filteredItems.length]);
 
   const videoRefCallback = useCallback((el: HTMLVideoElement | null) => {
     if (el) el.play().catch(() => {});
