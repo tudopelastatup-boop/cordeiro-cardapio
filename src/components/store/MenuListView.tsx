@@ -28,8 +28,7 @@ export const MenuListView: React.FC<MenuListViewProps> = ({ items, categories, b
 
   const totalRows = Math.ceil(filteredItems.length / 3);
 
-  // Active row: determined by which row's first card is closest to the
-  // visible center of the scroll container (between header and bottom nav)
+  // Active row: calculated from scroll position relative to the grid
   const [activeRow, setActiveRow] = useState<number>(0);
 
   const handleScroll = useCallback(() => {
@@ -42,31 +41,35 @@ export const MenuListView: React.FC<MenuListViewProps> = ({ items, categories, b
       savedScrollTop.current = container.scrollTop;
     }
 
-    // The visible area center — account for pt-20 (80px top) and pb-32 (128px bottom nav)
-    const containerRect = container.getBoundingClientRect();
-    const visibleTop = containerRect.top + 80;
-    const visibleBottom = containerRect.bottom - 128;
-    const centerY = (visibleTop + visibleBottom) / 2;
+    // How far the grid top is scrolled relative to the container
+    const gridOffsetTop = grid.offsetTop;
+    const scrollTop = container.scrollTop;
+    const containerHeight = container.clientHeight;
 
-    // Check each row's first card — whichever overlaps the center most wins
-    let bestRow = 0;
-    let bestDist = Infinity;
+    // The "center" of the visible area, relative to the scroll content
+    const viewCenter = scrollTop + containerHeight / 2;
 
-    const firstCards = grid.querySelectorAll('[data-row-first]');
-    firstCards.forEach((card) => {
-      const rect = card.getBoundingClientRect();
-      // Distance from card center to visible center
-      const cardCenter = rect.top + rect.height / 2;
-      const dist = Math.abs(cardCenter - centerY);
-      const row = Number(card.getAttribute('data-row'));
-      if (!isNaN(row) && dist < bestDist) {
-        bestDist = dist;
-        bestRow = row;
-      }
-    });
+    // Position within the grid
+    const posInGrid = viewCenter - gridOffsetTop;
 
-    setActiveRow(bestRow);
-  }, [savedScrollTop]);
+    if (posInGrid <= 0) {
+      setActiveRow(0);
+      return;
+    }
+
+    // Get actual row height from the first card
+    const firstCard = grid.querySelector('[data-row-first]') as HTMLElement | null;
+    if (!firstCard) return;
+
+    // Row height = card height + gap
+    const gap = parseFloat(getComputedStyle(grid).rowGap) || 16;
+    const rowHeight = firstCard.offsetHeight + gap;
+
+    if (rowHeight <= 0) return;
+
+    const row = Math.floor(posInGrid / rowHeight);
+    setActiveRow(Math.max(0, Math.min(row, totalRows - 1)));
+  }, [savedScrollTop, totalRows]);
 
   // Restore scroll position on mount
   useEffect(() => {
