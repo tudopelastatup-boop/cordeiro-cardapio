@@ -39,11 +39,9 @@ export const MenuListView: React.FC<MenuListViewProps> = ({ items, categories, b
     }
   }, []);
 
-  // Determine active row based on scroll position
-  // Logic: the row whose top edge is closest to (but not far below) a
-  // "trigger line" near the top of the visible area wins.
-  // The trigger line sits 35% down from the container top — this means
-  // as soon as a row scrolls past that point, the NEXT row takes over.
+  // Determine active row: which row's first card is closest to the
+  // trigger line at 35% of the container's visible height.
+  // Uses getBoundingClientRect for pixel-perfect positioning.
   const computeActiveRow = useCallback(() => {
     const container = scrollContainerRef.current;
     if (!container) return;
@@ -52,24 +50,19 @@ export const MenuListView: React.FC<MenuListViewProps> = ({ items, categories, b
       savedScrollTop.current = container.scrollTop;
     }
 
-    const triggerY = container.scrollTop + container.clientHeight * 0.35;
+    const containerRect = container.getBoundingClientRect();
+    // Trigger line at 35% down from the top of the visible container
+    const triggerY = containerRect.top + container.clientHeight * 0.35;
 
     let best = 0;
-    let bestTop = -Infinity;
+    let bestDist = Infinity;
 
     rowRefs.current.forEach((el, row) => {
-      // offsetTop is relative to offsetParent — we need it relative to
-      // the scroll container. Walk up the offset chain.
-      let top = 0;
-      let node: HTMLElement | null = el;
-      while (node && node !== container) {
-        top += node.offsetTop;
-        node = node.offsetParent as HTMLElement | null;
-      }
-
-      // The row whose top is closest to (but <= ) triggerY wins
-      if (top <= triggerY && top > bestTop) {
-        bestTop = top;
+      const rect = el.getBoundingClientRect();
+      const cardCenter = rect.top + rect.height / 2;
+      const dist = Math.abs(cardCenter - triggerY);
+      if (dist < bestDist) {
+        bestDist = dist;
         best = row;
       }
     });
