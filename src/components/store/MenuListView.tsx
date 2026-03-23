@@ -52,8 +52,15 @@ export const MenuListView: React.FC<MenuListViewProps> = ({ items, categories, b
       savedScrollTop.current = container.scrollTop;
     }
 
-    // Trigger line at 40% of the screen height (viewport-based)
-    const triggerY = window.innerHeight * 0.4;
+    // Trigger line: 40% down the screen, but move it DOWN proportionally
+    // as user scrolls further, so the last rows can still be reached.
+    // When scroll is at top, trigger is at 40%. At bottom, it's at 70%.
+    const scrollEl = container.scrollHeight > container.clientHeight ? container : document.documentElement;
+    const scrollRatio = scrollEl.scrollHeight > scrollEl.clientHeight
+      ? scrollEl.scrollTop / (scrollEl.scrollHeight - scrollEl.clientHeight)
+      : 0;
+    const triggerPercent = 0.4 + scrollRatio * 0.3; // 40% → 70%
+    const triggerY = window.innerHeight * triggerPercent;
 
     let best = 0;
     let bestDist = Infinity;
@@ -69,7 +76,7 @@ export const MenuListView: React.FC<MenuListViewProps> = ({ items, categories, b
     });
 
     setActiveRow(best);
-    setDebugInfo(`rows:${rowRefs.current.size} active:${best} triggerY:${Math.round(triggerY)} screenH:${window.innerHeight}`);
+    setDebugInfo(`active:${best}/${totalRows - 1} trigger:${Math.round(triggerPercent * 100)}%`);
   }, [savedScrollTop]);
 
   // Restore scroll on mount
