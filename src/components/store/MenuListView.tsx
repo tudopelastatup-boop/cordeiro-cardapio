@@ -41,8 +41,9 @@ export const MenuListView: React.FC<MenuListViewProps> = ({ items, categories, b
   }, []);
 
   // Determine active row: which row's first card is closest to the
-  // trigger line at 35% of the container's visible height.
-  // Uses getBoundingClientRect for pixel-perfect positioning.
+  // trigger line. Uses window.innerHeight since the scroll container
+  // might not be the element we think — getBoundingClientRect is
+  // viewport-relative so it works regardless of which element scrolls.
   const computeActiveRow = useCallback(() => {
     const container = scrollContainerRef.current;
     if (!container) return;
@@ -51,9 +52,8 @@ export const MenuListView: React.FC<MenuListViewProps> = ({ items, categories, b
       savedScrollTop.current = container.scrollTop;
     }
 
-    const containerRect = container.getBoundingClientRect();
-    // Trigger line at 35% down from the top of the visible container
-    const triggerY = containerRect.top + container.clientHeight * 0.35;
+    // Trigger line at 40% of the screen height (viewport-based)
+    const triggerY = window.innerHeight * 0.4;
 
     let best = 0;
     let bestDist = Infinity;
@@ -69,7 +69,7 @@ export const MenuListView: React.FC<MenuListViewProps> = ({ items, categories, b
     });
 
     setActiveRow(best);
-    setDebugInfo(`rows:${rowRefs.current.size} active:${best} trigger:${Math.round(triggerY)} scroll:${Math.round(container.scrollTop)}`);
+    setDebugInfo(`rows:${rowRefs.current.size} active:${best} triggerY:${Math.round(triggerY)} screenH:${window.innerHeight}`);
   }, [savedScrollTop]);
 
   // Restore scroll on mount
@@ -81,7 +81,8 @@ export const MenuListView: React.FC<MenuListViewProps> = ({ items, categories, b
     requestAnimationFrame(() => computeActiveRow());
   }, []);
 
-  // Scroll listener
+  // Scroll listener — listen on the container AND window as fallback
+  // (in case the actual scroll happens on a parent element)
   useEffect(() => {
     const container = scrollContainerRef.current;
     if (!container) return;
@@ -98,7 +99,21 @@ export const MenuListView: React.FC<MenuListViewProps> = ({ items, categories, b
     };
 
     container.addEventListener('scroll', onScroll, { passive: true });
-    return () => container.removeEventListener('scroll', onScroll);
+    window.addEventListener('scroll', onScroll, { passive: true });
+    // Also listen on the container's parent chain
+    let parent = container.parentElement;
+    const parents: HTMLElement[] = [];
+    while (parent) {
+      parent.addEventListener('scroll', onScroll, { passive: true });
+      parents.push(parent);
+      parent = parent.parentElement;
+    }
+
+    return () => {
+      container.removeEventListener('scroll', onScroll);
+      window.removeEventListener('scroll', onScroll);
+      parents.forEach(p => p.removeEventListener('scroll', onScroll));
+    };
   }, [computeActiveRow]);
 
   // Recompute when filter changes
