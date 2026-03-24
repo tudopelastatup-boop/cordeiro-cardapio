@@ -22,7 +22,7 @@ const App: React.FC = () => {
           {/* Public */}
           <Route path="/" element={<Navigate to="/login" replace />} />
           <Route path="/login" element={<LoginPage />} />
-          <Route path="/signup" element={<SignupPage />} />
+          <Route path="/signup" element={<Navigate to="/login" replace />} />
 
           {/* Admin (Protected) */}
           <Route element={<ProtectedRoute />}>
