@@ -69,17 +69,31 @@ export const MenuListView: React.FC<MenuListViewProps> = ({ items, categories, b
   }, [savedRow]);
 
   // On mount: scroll the saved row's card into view
+  // Use manual scroll to avoid scrollIntoView moving parent/body
   useEffect(() => {
     if (savedRow && savedRow.current > 0) {
       requestAnimationFrame(() => {
         const el = rowRefs.current.get(savedRow.current);
-        if (el) {
-          el.scrollIntoView({ behavior: 'instant', block: 'center' });
+        const container = scrollContainerRef.current;
+        if (el && container) {
+          // Find the actual scrolling ancestor
+          let scrollParent: HTMLElement | null = container;
+          while (scrollParent) {
+            if (scrollParent.scrollHeight > scrollParent.clientHeight) break;
+            scrollParent = scrollParent.parentElement;
+          }
+          if (!scrollParent) scrollParent = document.documentElement;
+
+          const elRect = el.getBoundingClientRect();
+          const parentRect = scrollParent.getBoundingClientRect();
+          const offset = elRect.top - parentRect.top - (scrollParent.clientHeight / 2) + (el.offsetHeight / 2);
+          scrollParent.scrollTop += offset;
         }
+        computeActiveRow();
       });
+    } else {
+      requestAnimationFrame(() => computeActiveRow());
     }
-    // Compute initial row after restore
-    requestAnimationFrame(() => computeActiveRow());
   }, []);
 
   // Scroll listener — listen on the container AND window as fallback
@@ -198,7 +212,7 @@ export const MenuListView: React.FC<MenuListViewProps> = ({ items, categories, b
             if (end - start < maxDots) start = Math.max(0, end - maxDots);
 
             return (
-              <div className="fixed right-1.5 top-1/2 -translate-y-1/2 z-30 flex flex-col gap-1 items-center">
+              <div className="fixed right-1.5 top-1/2 -translate-y-1/2 z-30 flex flex-col gap-1 items-center pointer-events-none">
                 {start > 0 && <div className="w-0.5 h-0.5 rounded-full bg-white/20" />}
                 {Array.from({ length: end - start }, (_, i) => {
                   const row = start + i;
