@@ -18,12 +18,11 @@ export const LandingPage: React.FC = () => {
             >
               Entrar
             </Link>
-            <Link
-              to="/signup"
-              className="text-sm bg-brand-primary hover:bg-brand-primary/90 text-white px-5 py-2.5 rounded-xl font-medium transition-colors"
+            <span
+              className="text-sm bg-neutral-800 text-neutral-500 px-5 py-2.5 rounded-xl font-medium cursor-not-allowed"
             >
               Começar grátis
-            </Link>
+            </span>
           </div>
         </div>
       </header>
@@ -44,13 +43,12 @@ export const LandingPage: React.FC = () => {
             Para restaurantes, bares, cafeterias e qualquer negócio.
           </p>
           <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
-            <Link
-              to="/signup"
-              className="w-full sm:w-auto bg-brand-primary hover:bg-brand-primary/90 text-white px-8 py-4 rounded-2xl font-medium text-lg transition-colors flex items-center justify-center gap-2"
+            <span
+              className="w-full sm:w-auto bg-neutral-800 text-neutral-500 px-8 py-4 rounded-2xl font-medium text-lg flex items-center justify-center gap-2 cursor-not-allowed"
             >
               <span className="material-icons-round">rocket_launch</span>
               Criar minha vitrine
-            </Link>
+            </span>
             <Link
               to="/primecut"
               className="w-full sm:w-auto border border-white/10 hover:border-white/20 text-white px-8 py-4 rounded-2xl font-medium text-lg transition-colors flex items-center justify-center gap-2"
@@ -138,16 +136,11 @@ export const LandingPage: React.FC = () => {
                     <span className="material-icons-round text-brand-primary text-sm">videocam</span>
                     {plan.videoLimit} vídeos
                   </div>
-                  <Link
-                    to="/signup"
-                    className={`block text-center py-3 rounded-xl text-sm font-medium transition-colors ${
-                      isPopular
-                        ? 'bg-brand-primary hover:bg-brand-primary/90 text-white'
-                        : 'bg-white/5 hover:bg-white/10 text-white'
-                    }`}
+                  <span
+                    className="block text-center py-3 rounded-xl text-sm font-medium bg-neutral-800 text-neutral-500 cursor-not-allowed"
                   >
-                    {plan.price === 0 ? 'Começar grátis' : 'Assinar'}
-                  </Link>
+                    Em breve
+                  </span>
                 </div>
               );
             })}

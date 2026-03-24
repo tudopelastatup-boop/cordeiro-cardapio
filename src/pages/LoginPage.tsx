@@ -91,11 +91,8 @@ export const LoginPage: React.FC = () => {
           </form>
         </div>
 
-        <p className="text-center text-sm text-neutral-500 mt-6">
-          Não tem conta?{' '}
-          <Link to="/signup" className="text-white hover:underline">
-            Criar conta grátis
-          </Link>
+        <p className="text-center text-sm text-neutral-600 mt-6">
+          Criação de novas contas desativada no momento.
         </p>
       </div>
     </div>

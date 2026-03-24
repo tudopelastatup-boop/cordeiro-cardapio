@@ -122,8 +122,16 @@ export const MenuListView: React.FC<MenuListViewProps> = ({ items, categories, b
     requestAnimationFrame(() => computeActiveRow());
   }, [selectedCategory, filteredItems.length, computeActiveRow]);
 
+  // When the video starts playing, fade it in over the thumbnail
   const videoRefCallback = useCallback((el: HTMLVideoElement | null) => {
-    if (el) el.play().catch(() => {});
+    if (!el) return;
+    el.style.opacity = '0';
+    const show = () => {
+      el.style.opacity = '1';
+      el.removeEventListener('playing', show);
+    };
+    el.addEventListener('playing', show);
+    el.play().catch(() => {});
   }, []);
 
   const getOriginalIndex = (item: MenuItem) => {
@@ -230,7 +238,15 @@ export const MenuListView: React.FC<MenuListViewProps> = ({ items, categories, b
                   }`}
                 >
                   <div className="absolute inset-0">
-                    {shouldPlayVideo ? (
+                    {/* Thumbnail always visible as base layer */}
+                    <img
+                      src={item.image}
+                      alt={item.title}
+                      className="w-full h-full object-cover"
+                      loading="lazy"
+                    />
+                    {/* Video overlays on top — starts invisible, fades in when playing */}
+                    {shouldPlayVideo && (
                       <video
                         ref={videoRefCallback}
                         src={item.videoUrl}
@@ -238,14 +254,7 @@ export const MenuListView: React.FC<MenuListViewProps> = ({ items, categories, b
                         loop
                         playsInline
                         autoPlay
-                        className="w-full h-full object-cover"
-                      />
-                    ) : (
-                      <img
-                        src={item.image}
-                        alt={item.title}
-                        className="w-full h-full object-cover"
-                        loading="lazy"
+                        className="absolute inset-0 w-full h-full object-cover transition-opacity duration-300"
                       />
                     )}
                     <div className="absolute inset-0 bg-linear-to-t from-black/90 via-black/20 to-transparent" />
